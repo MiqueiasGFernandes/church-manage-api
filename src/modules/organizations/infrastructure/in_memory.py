@@ -80,6 +80,11 @@ class InMemoryUnitOfWork:
     async def commit(self) -> None:
         self.committed = True
 
+    async def rollback(self) -> None:
+        if self._snapshot is not None:
+            self._repository.__dict__.update(deepcopy(self._snapshot.__dict__))
+        self.committed = False
+
 
 class Argon2Hasher:
     def __init__(self) -> None:

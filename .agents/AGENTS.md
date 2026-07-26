@@ -52,7 +52,6 @@ Python 3.12.x
 FastAPI
 Pydantic v2
 SQLAlchemy 2.x
-Alembic
 PostgreSQL
 Pytest
 Ruff
@@ -143,7 +142,6 @@ Não pode depender de:
 * FastAPI;
 * Pydantic;
 * SQLAlchemy;
-* Alembic;
 * bibliotecas HTTP;
 * SDKs externos;
 * banco de dados;
@@ -1009,31 +1007,22 @@ Casos de uso não devem executar `commit` diretamente em uma sessão SQLAlchemy 
 
 ---
 
-# 12. Migrations
+# 12. Schema do banco de dados
 
-Toda mudança de schema deve possuir migration Alembic.
+Não utilizar ferramentas de migration neste projeto. O schema PostgreSQL deve
+ser mantido como SQL puro e versionado em `scripts/`.
 
-Não utilizar:
+O arquivo canônico de criação das tabelas deve:
 
-```python
-Base.metadata.create_all()
-```
+* ser executável diretamente pelo `psql`;
+* possuir constraints e índices nomeados quando forem referenciados pelo código;
+* permanecer sincronizado com os modelos SQLAlchemy;
+* utilizar comandos idempotentes quando isso não esconder incompatibilidades;
+* ser montado no diretório `/docker-entrypoint-initdb.d/` do PostgreSQL local;
+* ser validado contra PostgreSQL real antes da conclusão de alterações de schema.
 
-como mecanismo de atualização de produção.
-
-Uma migration deve:
-
-* ser revisável;
-* possuir upgrade;
-* possuir downgrade quando seguro;
-* preservar dados existentes;
-* criar índices necessários;
-* criar constraints de integridade;
-* considerar volume futuro.
-
-Não editar migrations já executadas em ambientes compartilhados.
-
-Crie uma nova migration corretiva.
+Não utilizar `Base.metadata.create_all()` como mecanismo de atualização ou
+inicialização do banco.
 
 ---
 
@@ -1561,7 +1550,7 @@ Não acessar:
 Devem testar:
 
 * repositórios SQLAlchemy;
-* migrations;
+* scripts SQL de schema;
 * constraints;
 * mappers;
 * transações;
@@ -1788,14 +1777,15 @@ Com cobertura:
 uv run pytest --cov=src --cov-report=term-missing
 ```
 
-## 25.5 Migrations
+## 25.5 Schema PostgreSQL
 
 ```bash
-uv run alembic upgrade head
-uv run alembic revision --autogenerate -m "descricao"
+docker compose up -d postgres
+docker compose exec -T postgres psql -U church_manage -d church_manage_test < scripts/init-db.sql
 ```
 
-Migrations geradas automaticamente devem ser revisadas manualmente.
+O `docker-compose.yml` deve montar o SQL canônico em
+`/docker-entrypoint-initdb.d/` para inicialização automática de bancos novos.
 
 ---
 
@@ -2087,9 +2077,8 @@ Exemplos de arquivos normalmente gerados:
 
 ```text
 lockfiles
-migrations autogeradas
-clientes OpenAPI
 artefatos de build
+clientes OpenAPI
 ```
 
 ---
@@ -2106,7 +2095,7 @@ Uma tarefa só deve ser considerada concluída quando:
 6. o lint estiver passando;
 7. o formatador tiver sido executado;
 8. o Pyright não apresentar erros;
-9. migrations tiverem sido criadas quando necessário;
+9. o SQL canônico tiver sido atualizado e validado quando o schema mudar;
 10. a documentação afetada tiver sido atualizada;
 11. riscos e limitações remanescentes tiverem sido informados.
 
@@ -2119,10 +2108,11 @@ uv run pyright
 uv run pytest
 ```
 
-Quando houver migration:
+Quando houver mudança de schema:
 
 ```bash
-uv run alembic upgrade head
+docker compose config --quiet
+docker compose up -d postgres
 ```
 
 ---
@@ -2142,7 +2132,7 @@ Validações:
 - testes executados;
 - lint;
 - type checking;
-- migrations;
+- alterações no schema SQL;
 
 Decisões:
 - decisões relevantes tomadas;
@@ -2176,7 +2166,7 @@ O agente nunca deve:
 * armazenar segredos no repositório;
 * usar `float` para valores monetários;
 * gerar timestamps sem timezone;
-* criar migrations destrutivas sem destacar o impacto;
+* criar alterações destrutivas de schema sem destacar o impacto;
 * alterar decisões arquiteturais silenciosamente;
 * adicionar complexidade de infraestrutura sem necessidade;
 * afirmar sucesso sem realizar as validações correspondentes.

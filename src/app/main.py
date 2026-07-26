@@ -1,3 +1,7 @@
+import os
+from collections.abc import AsyncGenerator
+from contextlib import asynccontextmanager
+
 from fastapi import FastAPI
 
 from app.container import Container
@@ -12,11 +16,21 @@ from modules.organizations.presentation.http import (
 
 def create_app() -> FastAPI:
     container = Container()
+    persistence_backend = os.getenv("PERSISTENCE_BACKEND", "memory")
+    database_url = os.getenv("DATABASE_URL", "")
+    container.config.persistence_backend.from_value(persistence_backend)
+    container.config.database_url.from_value(database_url)
+
+    @asynccontextmanager
+    async def lifespan(_: FastAPI) -> AsyncGenerator[None]:
+        yield
+        if persistence_backend == "postgresql":
+            await container.database().dispose()
 
     async def resolve_register_church() -> IRegisterChurch:
         return container.register_church()
 
-    application = FastAPI(title="Church Manage API", version="0.1.0")
+    application = FastAPI(title="Church Manage API", version="0.1.0", lifespan=lifespan)
     application.include_router(router)
     application.dependency_overrides[get_register_church] = resolve_register_church
     for error_type in HANDLED_ERRORS:

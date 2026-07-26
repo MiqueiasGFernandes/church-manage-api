@@ -1,0 +1,4 @@
+interface:
+  display_name: "Implement Infrastructure Adapters"
+  short_description: "Implementa repositories e integrações externas"
+  default_prompt: "Use $implement-infrastructure-adapters para implementar este repository ou integração externa na infraestrutura."

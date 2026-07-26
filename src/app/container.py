@@ -9,16 +9,44 @@ from modules.organizations.infrastructure.in_memory import (
     SystemClock,
     UuidGenerator,
 )
+from modules.organizations.infrastructure.persistence.database import PostgresDatabase
+from modules.organizations.infrastructure.persistence.registration_repository import (
+    SqlAlchemyRegistrationRepository,
+)
+from modules.organizations.infrastructure.persistence.unit_of_work import SqlAlchemyUnitOfWork
+
+
+def build_postgres_register_church(
+    database: PostgresDatabase,
+    password_hasher: Argon2Hasher,
+    id_generator: UuidGenerator,
+    clock: SystemClock,
+    event_publisher: InMemoryEventPublisher,
+) -> RegisterChurch:
+    session = database.create_session()
+    repository = SqlAlchemyRegistrationRepository(session)
+    return RegisterChurch(
+        repository=repository,
+        unit_of_work=SqlAlchemyUnitOfWork(session),
+        password_hasher=password_hasher,
+        id_generator=id_generator,
+        clock=clock,
+        event_publisher=event_publisher,
+    )
 
 
 class Container(containers.DeclarativeContainer):
+    config = providers.Configuration()
+    config.persistence_backend.from_value("memory")
+    config.database_url.from_value("")
+
     repository = providers.Singleton(InMemoryRegistrationRepository)
     unit_of_work = providers.Factory(InMemoryUnitOfWork, repository=repository)
     password_hasher = providers.Singleton(Argon2Hasher)
     id_generator = providers.Singleton(UuidGenerator)
     clock = providers.Singleton(SystemClock)
     event_publisher = providers.Singleton(InMemoryEventPublisher)
-    register_church = providers.Factory(
+    in_memory_register_church = providers.Factory(
         RegisterChurch,
         repository=repository,
         unit_of_work=unit_of_work,
@@ -26,4 +54,18 @@ class Container(containers.DeclarativeContainer):
         id_generator=id_generator,
         clock=clock,
         event_publisher=event_publisher,
+    )
+    database = providers.Singleton(PostgresDatabase, database_url=config.database_url)
+    postgres_register_church = providers.Factory(
+        build_postgres_register_church,
+        database=database,
+        password_hasher=password_hasher,
+        id_generator=id_generator,
+        clock=clock,
+        event_publisher=event_publisher,
+    )
+    register_church = providers.Selector(
+        config.persistence_backend,
+        memory=in_memory_register_church,
+        postgresql=postgres_register_church,
     )

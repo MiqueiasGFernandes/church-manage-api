@@ -22,7 +22,7 @@ A proposta considera:
 * Tipagem forte no backend.
 * Clean Architecture.
 * Possibilidade de migração futura de infraestrutura.
-* Compatibilidade com Python 3.12, SQLAlchemy e Alembic.
+* Compatibilidade com Python 3.12, SQLAlchemy e PostgreSQL.
 
 ---
 
@@ -2547,48 +2547,26 @@ Isso é melhor do que manter somente colunas como `consent_image_at`, principalm
 
 ---
 
-# 27. Estrutura recomendada de migrations
+# 27. Estrutura do schema SQL
 
 ```text
-migrations/
-├── 001_create_churches.sql
-├── 002_create_congregations.sql
-├── 003_create_users_and_roles.sql
-├── 004_create_members.sql
-├── 005_create_member_approvals.sql
-├── 006_create_ministries.sql
-├── 007_create_small_groups.sql
-├── 008_create_events.sql
-├── 009_create_communications.sql
-├── 010_create_financial.sql
-├── 011_create_audit_logs.sql
-├── 012_create_outbox.sql
-└── 013_create_indexes.sql
+scripts/
+└── init-db.sql
 ```
 
-Com Alembic:
+O projeto não utiliza migrations. `scripts/init-db.sql` é a fonte canônica para
+criação das tabelas, constraints e índices e deve permanecer sincronizado com
+os modelos SQLAlchemy.
+
+O ambiente PostgreSQL local monta esse arquivo no diretório de inicialização da
+imagem oficial:
 
 ```text
-alembic/
-├── env.py
-├── script.py.mako
-└── versions/
-    ├── 20260726_001_create_churches.py
-    ├── 20260726_002_create_congregations.py
-    └── ...
+/docker-entrypoint-initdb.d/001-init-db.sql
 ```
 
-Cada migration deve possuir:
-
-```python
-def upgrade() -> None:
-    ...
-
-def downgrade() -> None:
-    ...
-```
-
-Todas as migrations devem ser tipadas e testadas.
+Toda alteração de schema deve atualizar o SQL canônico e ser validada contra
+PostgreSQL real por meio do `docker-compose.yml` do projeto.
 
 ---
 
@@ -2668,6 +2646,6 @@ Para o MVP:
 * Aprovação de cadastro modelada como entidade própria.
 * RBAC baseado em papéis e permissões.
 * SQLAlchemy 2 com mapeamento explícito.
-* Alembic para versionamento do schema.
+* SQL puro versionado em `scripts/init-db.sql` para criação do schema.
 * Não utilizar JSONB como substituto para modelagem relacional.
 * JSONB apenas para auditoria, eventos, metadados e extensibilidade controlada.

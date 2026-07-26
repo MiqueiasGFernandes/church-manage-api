@@ -1,0 +1,21 @@
+name: church-manage-test
+
+services:
+  postgres:
+    image: postgres:17-alpine
+    environment:
+      POSTGRES_DB: church_manage_test
+      POSTGRES_USER: church_manage
+      POSTGRES_PASSWORD: church_manage
+    ports:
+      - "${POSTGRES_TEST_PORT:-5433}:5432"
+    volumes:
+      - ./scripts/init-db.sql:/docker-entrypoint-initdb.d/001-init-db.sql:ro
+    tmpfs:
+      - /var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U church_manage -d church_manage_test"]
+      interval: 2s
+      timeout: 3s
+      retries: 15
+    restart: "no"

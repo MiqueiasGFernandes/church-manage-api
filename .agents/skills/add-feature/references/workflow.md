@@ -110,8 +110,10 @@ src/
     ├── database/
     ├── web/
     ├── configuration/
-    ├── dependency_injection/
-    └── migrations/
+    └── dependency_injection/
+
+scripts/
+└── init-db.sql
 
 tests/
 ├── unit/
@@ -783,7 +785,7 @@ A infraestrutura deve conectar os adapters aos frameworks e recursos externos.
 Implemente, quando necessário:
 
 * modelo ORM;
-* migration;
+* atualização de `scripts/init-db.sql`;
 * configuração;
 * container de dependências;
 * transação;
@@ -1324,19 +1326,19 @@ Quando a operação exigir histórico formal, implemente um registro de auditori
 
 ---
 
-# Banco de dados e migrations
+# Banco de dados e schema SQL
 
 Quando a feature exigir alteração de banco:
 
-1. crie uma migration versionada;
-2. mantenha compatibilidade com dados existentes;
+1. atualize o schema canônico em `scripts/init-db.sql`;
+2. mantenha compatibilidade com o estado esperado do banco;
 3. defina nulabilidade conscientemente;
 4. defina índices com base nos acessos reais;
 5. defina constraints que reforcem invariantes possíveis;
 6. considere escopo multi-tenant;
-7. evite migration destrutiva sem estratégia de transição;
-8. teste o upgrade;
-9. teste o downgrade quando o projeto oferecer suporte;
+7. evite alteração destrutiva sem estratégia explícita;
+8. teste a criação em PostgreSQL real pelo Docker Compose;
+9. teste a reexecução do script quando ele for declarado idempotente;
 10. não dependa apenas da validação da aplicação.
 
 Para mudanças incompatíveis, prefira expandir e contrair:
@@ -1378,7 +1380,7 @@ Para uma nova feature, implemente aproximadamente nesta ordem:
 8. Teste de integração do repositório
 9. Modelo ORM e mapper
 10. Implementação do repositório
-11. Migration
+11. Atualização de `scripts/init-db.sql`
 12. Teste HTTP
 13. Request e response
 14. Controller ou rota
@@ -1427,7 +1429,7 @@ A ordem pode variar quando não houver alteração em alguma camada.
 ## Infraestrutura
 
 * [ ] Dependências estão configuradas no composition root.
-* [ ] A migration foi criada.
+* [ ] O schema canônico em `scripts/init-db.sql` foi atualizado.
 * [ ] Índices e constraints foram considerados.
 * [ ] Logs não expõem informações sensíveis.
 * [ ] Configurações não estão hardcoded.
@@ -1526,7 +1528,7 @@ Uma feature somente pode ser considerada concluída quando:
 7. a tipagem está correta;
 8. o linter está passando;
 9. o formatter está passando;
-10. a migration está incluída, quando necessária;
+10. o SQL canônico está atualizado e validado, quando necessário;
 11. a composição de dependências foi atualizada;
 12. a documentação relevante foi atualizada;
 13. não existem violações conhecidas da arquitetura;
@@ -1578,7 +1580,7 @@ Informe:
 
 Informe:
 
-* migrations;
+* alterações em `scripts/init-db.sql`;
 * tabelas ou colunas alteradas;
 * índices;
 * constraints.

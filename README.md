@@ -11,7 +11,9 @@ configurações padrão.
 - [Stack tecnológica](#stack-tecnológica)
 - [Requisitos](#requisitos)
 - [Instalação](#instalação)
+- [Configuração](#configuração)
 - [Execução](#execução)
+- [Banco de dados](#banco-de-dados)
 - [API](#api)
 - [Testes e qualidade](#testes-e-qualidade)
 - [Estrutura do projeto](#estrutura-do-projeto)
@@ -27,6 +29,7 @@ configurações padrão.
 - Detecção de e-mail, slug e CNPJ duplicados.
 - Hash de senhas com Argon2.
 - Publicação do evento de domínio `ChurchRegistered`.
+- Persistência opcional em PostgreSQL com transação atômica para o cadastro completo.
 - Respostas tipadas e documentação OpenAPI.
 
 ## Arquitetura
@@ -52,6 +55,8 @@ infraestrutura.
 | Validação HTTP | Pydantic 2 |
 | Injeção de dependências | Dependency Injector |
 | Hash de senha | Argon2 |
+| Persistência | SQLAlchemy 2 assíncrono e SQL PostgreSQL versionado |
+| Banco de dados | PostgreSQL com asyncpg |
 | Gerenciamento de dependências | uv |
 | Testes | Pytest e pytest-asyncio |
 | Qualidade | Ruff e Pyright |
@@ -60,8 +65,9 @@ infraestrutura.
 
 - Python 3.12 ou superior.
 - [uv](https://docs.astral.sh/uv/) instalado.
+- Docker com Compose para executar o PostgreSQL local de testes.
 
-O estado atual da aplicação não exige banco de dados nem variáveis de ambiente.
+O backend em memória continua disponível para desenvolvimento e testes sem banco.
 
 ## Instalação
 
@@ -79,6 +85,24 @@ desenvolvimento:
 uv sync
 ```
 
+## Configuração
+
+Use o arquivo `.env.example` como referência e exporte as variáveis quando quiser usar
+PostgreSQL:
+
+```bash
+export PERSISTENCE_BACKEND=postgresql
+export DATABASE_URL=postgresql+asyncpg://church_manage:church_manage@localhost:5433/church_manage_test
+```
+
+| Variável | Valor padrão | Descrição |
+|---|---|---|
+| `PERSISTENCE_BACKEND` | `memory` | Use `postgresql` para ativar o repository SQLAlchemy. |
+| `DATABASE_URL` | vazio | URL assíncrona no formato `postgresql+asyncpg://...`. |
+
+O processo precisa receber essas variáveis de ambiente; o projeto não carrega arquivos `.env`
+automaticamente.
+
 ## Execução
 
 Inicie o servidor de desenvolvimento:
@@ -88,6 +112,31 @@ uv run uvicorn --app-dir src app.main:app --reload
 ```
 
 A API ficará disponível em `http://localhost:8000`.
+
+## Banco de dados
+
+Suba o PostgreSQL local de testes:
+
+```bash
+docker compose up -d postgres
+```
+
+O container executa automaticamente `scripts/init-db.sql` ao inicializar o banco. Confira o
+estado do serviço:
+
+```bash
+docker compose ps
+```
+
+Para encerrar e descartar os dados temporários:
+
+```bash
+docker compose down
+```
+
+O cadastro persiste igreja, endereço, congregação sede, administrador, vínculo e configurações
+na mesma transação. Constraints de e-mail, slug, documento e vínculo protegem conflitos
+concorrentes.
 
 ## API
 
@@ -106,6 +155,14 @@ Execute a suíte de testes:
 
 ```bash
 uv run pytest
+```
+
+Com o PostgreSQL do Compose em execução, valide o fluxo real de persistência:
+
+```bash
+PERSISTENCE_BACKEND=postgresql \
+DATABASE_URL=postgresql+asyncpg://church_manage:church_manage@localhost:5433/church_manage_test \
+uv run pytest tests/integration/test_register_church_http.py
 ```
 
 Verifique o lint:
@@ -162,6 +219,9 @@ uv run ruff format src tests
 ├── tests/
 │   ├── integration/
 │   └── unit/
+├── scripts/
+│   └── init-db.sql
+├── docker-compose.yml
 ├── pyproject.toml
 └── uv.lock
 ```
@@ -172,7 +232,9 @@ uv run ruff format src tests
 
 ## Limitações atuais
 
-- A persistência e a publicação de eventos usam implementações em memória.
-- Os dados são perdidos quando o processo da aplicação é reiniciado.
-- Ainda não há migrations, configuração de banco de dados ou suporte a Docker no repositório.
+- O backend em memória perde os dados quando o processo é reiniciado; use PostgreSQL para
+  persistência durável.
+- A publicação de eventos ainda usa uma implementação em memória.
+- A suíte Python valida mappers e transações; o schema SQL deve ser validado no PostgreSQL
+  local fornecido pelo Docker Compose.
 - O repositório não possui uma licença declarada.

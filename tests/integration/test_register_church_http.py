@@ -1,6 +1,11 @@
+import os
+from collections.abc import AsyncGenerator
 from typing import TypedDict
 
+import pytest
 from httpx import ASGITransport, AsyncClient
+from sqlalchemy import text
+from sqlalchemy.ext.asyncio import create_async_engine
 
 from app.container import Container
 from app.main import app
@@ -42,6 +47,30 @@ class ChurchRegistrationPayload(TypedDict):
 
 class InvalidChurchRegistrationPayload(ChurchRegistrationPayload):
     is_platform_admin: bool
+
+
+@pytest.fixture(scope="module", autouse=True)
+async def clean_postgresql_registration_tables() -> AsyncGenerator[None]:
+    if os.getenv("PERSISTENCE_BACKEND") != "postgresql":
+        yield
+        return
+
+    database_url = os.environ["DATABASE_URL"]
+    engine = create_async_engine(database_url)
+
+    async def truncate_tables() -> None:
+        async with engine.begin() as connection:
+            await connection.execute(
+                text(
+                    "TRUNCATE TABLE church_memberships, congregations, addresses, "
+                    "church_settings, users, churches CASCADE"
+                )
+            )
+
+    await truncate_tables()
+    yield
+    await truncate_tables()
+    await engine.dispose()
 
 
 def payload() -> ChurchRegistrationPayload:

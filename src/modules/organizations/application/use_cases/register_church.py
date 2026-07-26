@@ -68,13 +68,6 @@ class RegisterChurch:
         administrator_email = EmailAddress(data.administrator.email)
         slug = ChurchSlug(data.slug)
         document = CNPJ(data.document) if data.document else None
-        if await self._repository.user_exists_by_email(administrator_email):
-            raise UserEmailAlreadyExistsError("Já existe uma conta cadastrada com este e-mail.")
-        if await self._repository.church_exists_by_slug(slug):
-            raise ChurchSlugAlreadyExistsError("O endereço público escolhido já está em uso.")
-        if document is not None and await self._repository.church_exists_by_document(document):
-            raise ChurchDocumentAlreadyExistsError("Já existe uma igreja cadastrada com este CNPJ.")
-
         now = self._clock.now()
         church_id, congregation_id, user_id = (
             ChurchId(self._id_generator.generate()),
@@ -127,6 +120,14 @@ class RegisterChurch:
         church.events.append(event)
 
         async with self._unit_of_work:
+            if await self._repository.user_exists_by_email(administrator_email):
+                raise UserEmailAlreadyExistsError("Já existe uma conta cadastrada com este e-mail.")
+            if await self._repository.church_exists_by_slug(slug):
+                raise ChurchSlugAlreadyExistsError("O endereço público escolhido já está em uso.")
+            if document is not None and await self._repository.church_exists_by_document(document):
+                raise ChurchDocumentAlreadyExistsError(
+                    "Já existe uma igreja cadastrada com este CNPJ."
+                )
             await self._repository.add_church(church)
             await self._repository.add_user(user)
             await self._repository.add_congregation(congregation)
