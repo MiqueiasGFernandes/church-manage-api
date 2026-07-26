@@ -8,8 +8,8 @@ from uuid import UUID
 from modules.organizations.domain.model import ChurchRegistered
 
 
-class UnitOfWork(Protocol):
-    async def __aenter__(self) -> UnitOfWork: ...
+class IUnitOfWork(Protocol):
+    async def __aenter__(self) -> IUnitOfWork: ...
 
     async def __aexit__(
         self,
@@ -21,17 +21,17 @@ class UnitOfWork(Protocol):
     async def commit(self) -> None: ...
 
 
-class PasswordHasher(Protocol):
+class IPasswordHasher(Protocol):
     def hash(self, plain_text: str) -> str: ...
 
 
-class IdGenerator(Protocol):
+class IIdGenerator(Protocol):
     def generate(self) -> UUID: ...
 
 
-class Clock(Protocol):
+class IClock(Protocol):
     def now(self) -> datetime: ...
 
 
-class EventPublisher(Protocol):
+class IEventPublisher(Protocol):
     async def publish(self, event: ChurchRegistered) -> None: ...

@@ -12,14 +12,14 @@ from modules.organizations.application.errors.register_church import (
     WeakPasswordError,
 )
 from modules.organizations.application.ports.registration_services import (
-    Clock,
-    EventPublisher,
-    IdGenerator,
-    PasswordHasher,
-    UnitOfWork,
+    IClock,
+    IEventPublisher,
+    IIdGenerator,
+    IPasswordHasher,
+    IUnitOfWork,
 )
 from modules.organizations.application.repositories.registration_repository import (
-    RegistrationRepository,
+    IRegistrationRepository,
 )
 from modules.organizations.domain.model import (
     CNPJ,
@@ -49,12 +49,12 @@ from modules.organizations.domain.model import (
 class RegisterChurch:
     def __init__(
         self,
-        repository: RegistrationRepository,
-        unit_of_work: UnitOfWork,
-        password_hasher: PasswordHasher,
-        id_generator: IdGenerator,
-        clock: Clock,
-        event_publisher: EventPublisher,
+        repository: IRegistrationRepository,
+        unit_of_work: IUnitOfWork,
+        password_hasher: IPasswordHasher,
+        id_generator: IIdGenerator,
+        clock: IClock,
+        event_publisher: IEventPublisher,
     ) -> None:
         self._repository = repository
         self._unit_of_work = unit_of_work

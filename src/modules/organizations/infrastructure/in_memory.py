@@ -6,7 +6,7 @@ from types import TracebackType
 from uuid import UUID, uuid4
 
 from modules.organizations.application.repositories.registration_repository import (
-    RegistrationRepository,
+    IRegistrationRepository,
 )
 from modules.organizations.domain.model import (
     CNPJ,
@@ -21,7 +21,7 @@ from modules.organizations.domain.model import (
 )
 
 
-class InMemoryRegistrationRepository(RegistrationRepository):
+class InMemoryRegistrationRepository(IRegistrationRepository):
     """Development adapter; production persistence can replace this port unchanged."""
 
     def __init__(self) -> None:
