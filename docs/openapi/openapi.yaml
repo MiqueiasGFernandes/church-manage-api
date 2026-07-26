@@ -191,10 +191,11 @@ components:
           type: string
           minLength: 3
           maxLength: 60
-          pattern: '^[a-z0-9]+(?:-[a-z0-9]+)*$'
+          pattern: '^[A-Za-z0-9]+(?:-[A-Za-z0-9]+)*$'
           description: |
-            Endereço público único da igreja. É normalizado para letras
-            minúsculas e não pode ser uma palavra reservada pela aplicação.
+            Endereço público único da igreja. A entrada aceita letras maiúsculas,
+            mas é normalizada para minúsculas antes da verificação de unicidade e
+            não pode ser uma palavra reservada pela aplicação.
           example: igreja-central-jundiai
         timezone:
           type: string
@@ -437,7 +438,7 @@ components:
 
     JsonValue:
       description: Valor recebido pelo validador, preservado no erro automático do framework.
-      oneOf:
+      anyOf:
         - type: 'null'
         - type: boolean
         - type: integer
