@@ -1,0 +1,4 @@
+interface:
+  display_name: "Adicionar testes E2E"
+  short_description: "Valida regras de negócio via API com httpx"
+  default_prompt: "Use $add-e2e-tests para adicionar testes E2E que validem regras de negócio pela API com httpx."
