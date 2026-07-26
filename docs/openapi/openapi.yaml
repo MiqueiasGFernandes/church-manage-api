@@ -1,0 +1,455 @@
+openapi: 3.1.0
+
+info:
+  title: Church Manage API
+  version: 0.1.0
+  description: |
+    API HTTP para gestão de igrejas. O contrato documenta somente as
+    funcionalidades atualmente expostas pela aplicação.
+
+tags:
+  - name: Churches
+    description: Cadastro e gerenciamento de igrejas.
+
+paths:
+  /api/v1/churches:
+    post:
+      tags:
+        - Churches
+      operationId: registerChurch
+      summary: Cadastra uma igreja
+      description: |
+        Cadastra a igreja, sua congregação sede, o primeiro administrador,
+        o vínculo administrativo e as configurações iniciais em uma transação.
+
+        A igreja e o administrador são criados com verificação de e-mail
+        pendente. O endpoint é público e não é idempotente.
+      security: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/RegisterChurchRequest'
+            examples:
+              churchRegistration:
+                summary: Cadastro de uma igreja e seu administrador
+                value:
+                  official_name: Igreja Batista Central de Jundiaí
+                  display_name: Igreja Batista Central
+                  document: 11.222.333/0001-81
+                  institutional_email: contato@igreja.com.br
+                  institutional_phone: '+5511999999999'
+                  website: https://igreja.com.br
+                  slug: igreja-central-jundiai
+                  timezone: America/Sao_Paulo
+                  address:
+                    postal_code: 13200-000
+                    street: Rua das Igrejas
+                    number: '100'
+                    complement: null
+                    district: Centro
+                    city: Jundiaí
+                    state: SP
+                    country: BR
+                  administrator:
+                    name: João da Silva
+                    email: joao@igreja.com.br
+                    phone: '+5511999999999'
+                    password: Senha123
+                    password_confirmation: Senha123
+                  terms_accepted: true
+      responses:
+        '201':
+          description: Igreja e estrutura inicial cadastradas com sucesso.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/RegisterChurchResponse'
+              examples:
+                pendingEmailVerification:
+                  summary: Cadastro aguardando verificação de e-mail
+                  value:
+                    data:
+                      church_id: 7a3aa748-53fd-47a9-b54e-429ba5e5405d
+                      congregation_id: 069bd8f6-16ee-4d20-b35b-b60b1e5fbb7e
+                      administrator_id: 7b29c563-a82f-4ec6-9646-1ed4fba9190d
+                      status: pending_email_verification
+                      email_verification_required: true
+        '409':
+          description: E-mail do administrador, slug ou CNPJ já cadastrado.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/RegistrationErrorResponse'
+              examples:
+                administratorEmailAlreadyExists:
+                  value:
+                    error:
+                      code: USER_EMAIL_ALREADY_EXISTS
+                      message: Já existe uma conta cadastrada com este e-mail.
+                churchSlugAlreadyExists:
+                  value:
+                    error:
+                      code: CHURCH_SLUG_ALREADY_EXISTS
+                      message: O endereço público escolhido já está em uso.
+                churchDocumentAlreadyExists:
+                  value:
+                    error:
+                      code: CHURCH_DOCUMENT_ALREADY_EXISTS
+                      message: Já existe uma igreja cadastrada com este CNPJ.
+        '422':
+          description: |
+            Corpo incompatível com o contrato ou dados rejeitados pelas regras
+            de cadastro e pelos tipos de domínio.
+          content:
+            application/json:
+              schema:
+                oneOf:
+                  - $ref: '#/components/schemas/RequestValidationErrorResponse'
+                  - $ref: '#/components/schemas/RegistrationErrorResponse'
+              examples:
+                unknownField:
+                  summary: Campo não permitido no corpo
+                  value:
+                    detail:
+                      - type: extra_forbidden
+                        loc:
+                          - body
+                          - is_platform_admin
+                        msg: Extra inputs are not permitted
+                        input: true
+                termsNotAccepted:
+                  summary: Termos não aceitos
+                  value:
+                    error:
+                      code: TERMS_NOT_ACCEPTED
+                      message: O aceite dos termos é necessário.
+                invalidDomainField:
+                  summary: Campo rejeitado pelo domínio
+                  value:
+                    error:
+                      code: VALIDATION_ERROR
+                      message: O slug informado possui formato inválido.
+                      fields:
+                        slug:
+                          - O slug informado possui formato inválido.
+
+components:
+  schemas:
+    RegisterChurchRequest:
+      type: object
+      additionalProperties: false
+      required:
+        - official_name
+        - display_name
+        - institutional_email
+        - institutional_phone
+        - slug
+        - timezone
+        - address
+        - administrator
+        - terms_accepted
+      properties:
+        official_name:
+          type: string
+          minLength: 3
+          maxLength: 150
+          description: Nome oficial; espaços consecutivos são normalizados.
+          example: Igreja Batista Central de Jundiaí
+        display_name:
+          type: string
+          minLength: 2
+          maxLength: 100
+          description: Nome curto usado para exibição; espaços são normalizados.
+          example: Igreja Batista Central
+        document:
+          anyOf:
+            - type: string
+            - type: 'null'
+          description: CNPJ opcional. A aplicação remove caracteres não numéricos e valida os dígitos verificadores.
+          examples:
+            - 11.222.333/0001-81
+            - null
+        institutional_email:
+          type: string
+          maxLength: 254
+          pattern: '^[^@\s]+@[^@\s]+\.[^@\s]+$'
+          description: E-mail institucional, normalizado para letras minúsculas.
+          example: contato@igreja.com.br
+        institutional_phone:
+          type: string
+          description: Telefone com código do país; a representação persistida usa de 8 a 15 dígitos no formato E.164.
+          example: '+5511999999999'
+        website:
+          anyOf:
+            - type: string
+            - type: 'null'
+          description: Endereço web institucional opcional.
+          example: https://igreja.com.br
+        slug:
+          type: string
+          minLength: 3
+          maxLength: 60
+          pattern: '^[a-z0-9]+(?:-[a-z0-9]+)*$'
+          description: |
+            Endereço público único da igreja. É normalizado para letras
+            minúsculas e não pode ser uma palavra reservada pela aplicação.
+          example: igreja-central-jundiai
+        timezone:
+          type: string
+          description: Identificador de fuso horário reconhecido pelo banco IANA instalado no servidor.
+          example: America/Sao_Paulo
+        address:
+          $ref: '#/components/schemas/AddressRequest'
+        administrator:
+          $ref: '#/components/schemas/AdministratorRequest'
+        terms_accepted:
+          type: boolean
+          const: true
+          description: Confirmação obrigatória do aceite dos termos.
+
+    AddressRequest:
+      type: object
+      additionalProperties: false
+      required:
+        - postal_code
+        - street
+        - number
+        - district
+        - city
+        - state
+        - country
+      properties:
+        postal_code:
+          type: string
+          minLength: 1
+          description: Código postal do endereço da congregação sede.
+          example: 13200-000
+        street:
+          type: string
+          minLength: 1
+          description: Logradouro da congregação sede.
+          example: Rua das Igrejas
+        number:
+          type: string
+          minLength: 1
+          description: Número ou identificação do imóvel.
+          example: '100'
+        complement:
+          anyOf:
+            - type: string
+            - type: 'null'
+          description: Complemento opcional do endereço.
+          example: Sala 2
+        district:
+          type: string
+          minLength: 1
+          description: Bairro da congregação sede.
+          example: Centro
+        city:
+          type: string
+          minLength: 1
+          description: Cidade da congregação sede.
+          example: Jundiaí
+        state:
+          type: string
+          minLength: 1
+          description: Estado, província ou divisão administrativa equivalente.
+          example: SP
+        country:
+          type: string
+          minLength: 1
+          description: País do endereço.
+          example: BR
+
+    AdministratorRequest:
+      type: object
+      additionalProperties: false
+      required:
+        - name
+        - email
+        - phone
+        - password
+        - password_confirmation
+      properties:
+        name:
+          type: string
+          minLength: 1
+          description: Nome do primeiro administrador; espaços consecutivos são normalizados.
+          example: João da Silva
+        email:
+          type: string
+          maxLength: 254
+          pattern: '^[^@\s]+@[^@\s]+\.[^@\s]+$'
+          description: E-mail único do administrador, normalizado para letras minúsculas.
+          example: joao@igreja.com.br
+        phone:
+          type: string
+          description: Telefone com código do país; a representação persistida usa de 8 a 15 dígitos no formato E.164.
+          example: '+5511999999999'
+        password:
+          type: string
+          format: password
+          minLength: 8
+          writeOnly: true
+          description: Senha contendo pelo menos uma letra e um algarismo.
+          example: Senha123
+        password_confirmation:
+          type: string
+          format: password
+          minLength: 8
+          writeOnly: true
+          description: Repetição exata do campo `password`.
+          example: Senha123
+
+    RegisterChurchResponse:
+      type: object
+      additionalProperties: false
+      required:
+        - data
+      properties:
+        data:
+          $ref: '#/components/schemas/RegisterChurchData'
+
+    RegisterChurchData:
+      type: object
+      additionalProperties: false
+      required:
+        - church_id
+        - congregation_id
+        - administrator_id
+        - status
+        - email_verification_required
+      properties:
+        church_id:
+          type: string
+          format: uuid
+          description: Identificador da igreja criada.
+        congregation_id:
+          type: string
+          format: uuid
+          description: Identificador da congregação sede criada.
+        administrator_id:
+          type: string
+          format: uuid
+          description: Identificador do primeiro administrador.
+        status:
+          $ref: '#/components/schemas/ChurchStatus'
+        email_verification_required:
+          type: boolean
+          const: true
+          description: Indica que a verificação do e-mail é necessária para concluir a ativação.
+
+    ChurchStatus:
+      type: string
+      description: Estado inicial da igreja cadastrada.
+      enum:
+        - pending_email_verification
+
+    RegistrationErrorResponse:
+      type: object
+      additionalProperties: false
+      required:
+        - error
+      properties:
+        error:
+          $ref: '#/components/schemas/RegistrationError'
+
+    RegistrationError:
+      type: object
+      additionalProperties: false
+      required:
+        - code
+        - message
+      properties:
+        code:
+          type: string
+          enum:
+            - REGISTRATION_ERROR
+            - TERMS_NOT_ACCEPTED
+            - PASSWORD_MISMATCH
+            - WEAK_PASSWORD
+            - USER_EMAIL_ALREADY_EXISTS
+            - CHURCH_SLUG_ALREADY_EXISTS
+            - CHURCH_DOCUMENT_ALREADY_EXISTS
+            - VALIDATION_ERROR
+          description: Código estável do erro de cadastro.
+        message:
+          type: string
+          minLength: 1
+          description: Mensagem legível com o motivo da rejeição.
+        fields:
+          $ref: '#/components/schemas/FieldErrors'
+
+    FieldErrors:
+      type: object
+      description: Erros agrupados pelo nome externo do campo.
+      additionalProperties:
+        type: array
+        minItems: 1
+        items:
+          type: string
+          minLength: 1
+
+    RequestValidationErrorResponse:
+      type: object
+      additionalProperties: false
+      required:
+        - detail
+      properties:
+        detail:
+          type: array
+          minItems: 1
+          items:
+            $ref: '#/components/schemas/RequestValidationError'
+
+    RequestValidationError:
+      type: object
+      additionalProperties: false
+      required:
+        - type
+        - loc
+        - msg
+      properties:
+        type:
+          type: string
+          minLength: 1
+          description: Identificador do tipo de falha produzido pelo validador.
+        loc:
+          type: array
+          minItems: 1
+          items:
+            oneOf:
+              - type: string
+              - type: integer
+        msg:
+          type: string
+          minLength: 1
+          description: Descrição da falha de validação.
+        input:
+          $ref: '#/components/schemas/JsonValue'
+        ctx:
+          $ref: '#/components/schemas/JsonObject'
+        url:
+          type: string
+          format: uri
+
+    JsonValue:
+      description: Valor recebido pelo validador, preservado no erro automático do framework.
+      oneOf:
+        - type: 'null'
+        - type: boolean
+        - type: integer
+        - type: number
+        - type: string
+        - type: array
+          items:
+            $ref: '#/components/schemas/JsonValue'
+        - $ref: '#/components/schemas/JsonObject'
+
+    JsonObject:
+      type: object
+      description: Objeto JSON recebido ou produzido pelo contexto do validador.
+      additionalProperties:
+        $ref: '#/components/schemas/JsonValue'

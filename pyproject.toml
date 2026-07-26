@@ -1,0 +1,56 @@
+[project]
+name = "church-manage-api"
+version = "0.1.0"
+requires-python = ">=3.12"
+dependencies = [
+  "argon2-cffi>=23.1,<26",
+  "dependency-injector>=4.42,<5",
+  "fastapi>=0.115,<0.116",
+  "pydantic>=2.10,<3",
+  "uvicorn[standard]>=0.34,<1",
+]
+
+[dependency-groups]
+dev = [
+  "httpx>=0.28,<1",
+  "pre-commit>=4.6.1",
+  "pyright>=1.1.400,<2",
+  "pytest>=8.3,<9",
+  "pytest-asyncio>=0.25,<1",
+  "pytest-cov>=7.1.0",
+  "ruff>=0.9,<1",
+]
+
+[tool.pytest.ini_options]
+asyncio_mode = "auto"
+pythonpath = ["src"]
+testpaths = ["tests"]
+
+[tool.coverage.run]
+source = [
+  "src/modules/organizations/application",
+  "src/modules/organizations/domain",
+  "src/modules/organizations/infrastructure",
+]
+
+[tool.coverage.report]
+fail_under = 91
+show_missing = true
+
+[tool.ruff]
+line-length = 100
+target-version = "py312"
+
+[tool.ruff.lint]
+select = ["E", "F", "I", "UP", "B", "ASYNC"]
+ignore = ["UP017", "UP042"]
+
+[tool.ruff.lint.per-file-ignores]
+"src/**/presentation/*.py" = ["B008"]
+
+[tool.pyright]
+pythonVersion = "3.12"
+typeCheckingMode = "strict"
+include = ["src", "tests"]
+venvPath = "."
+venv = ".venv"
