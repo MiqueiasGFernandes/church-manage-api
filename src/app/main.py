@@ -1,7 +1,7 @@
 from fastapi import FastAPI
 
 from app.container import Container
-from modules.organizations.application.use_cases.register_church import RegisterChurch
+from modules.organizations.domain.use_cases.register_church import IRegisterChurch
 from modules.organizations.presentation.http import (
     HANDLED_ERRORS,
     get_register_church,
@@ -13,7 +13,7 @@ from modules.organizations.presentation.http import (
 def create_app() -> FastAPI:
     container = Container()
 
-    async def resolve_register_church() -> RegisterChurch:
+    async def resolve_register_church() -> IRegisterChurch:
         return container.register_church()
 
     application = FastAPI(title="Church Manage API", version="0.1.0")

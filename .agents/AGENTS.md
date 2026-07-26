@@ -356,6 +356,12 @@ Não concentre DTOs, portas e implementação do caso de uso em um único arquiv
 A separação deve representar responsabilidades reais e evitar arquivos
 demasiadamente grandes, sem criar um arquivo por classe de forma mecânica.
 
+## 5.2 Nomenclatura das interfaces de casos de uso
+
+As interfaces de casos de uso devem usar o prefixo `I` no nome da classe, como
+`IRegisterChurch`. O nome do arquivo não deve usar o prefixo `i_`; deve acompanhar
+o caso de uso, como `domain/use_cases/register_church.py`.
+
 ---
 
 # 6. Tipagem forte em Python

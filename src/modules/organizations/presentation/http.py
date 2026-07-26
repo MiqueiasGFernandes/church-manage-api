@@ -18,8 +18,8 @@ from modules.organizations.application.errors.register_church import (
     UserEmailAlreadyExistsError,
     WeakPasswordError,
 )
-from modules.organizations.application.use_cases.register_church import RegisterChurch
 from modules.organizations.domain.model import DomainError, InvalidFieldError
+from modules.organizations.domain.use_cases.register_church import IRegisterChurch
 
 router = APIRouter(prefix="/api/v1/churches", tags=["churches"])
 
@@ -72,14 +72,14 @@ class RegisterChurchResponse(BaseModel):
     data: RegisterChurchData
 
 
-async def get_register_church() -> RegisterChurch:
+async def get_register_church() -> IRegisterChurch:
     raise RuntimeError("A dependência deve ser configurada pelo composition root.")
 
 
 @router.post("", response_model=RegisterChurchResponse, status_code=status.HTTP_201_CREATED)
 async def register_church(
     body: RegisterChurchRequest,
-    use_case: RegisterChurch = Depends(get_register_church),
+    use_case: IRegisterChurch = Depends(get_register_church),
 ) -> RegisterChurchResponse:
     address = RegisterAddressInput(
         postal_code=body.address.postal_code,
