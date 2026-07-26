@@ -1,0 +1,4 @@
+interface:
+  display_name: "Generate OpenAPI Docs"
+  short_description: "Cria e mantém contratos OpenAPI consistentes"
+  default_prompt: "Use $generate-openapi-docs para criar ou atualizar a documentação OpenAPI desta API."

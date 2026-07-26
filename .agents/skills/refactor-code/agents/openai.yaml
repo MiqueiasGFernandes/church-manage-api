@@ -1,0 +1,4 @@
+interface:
+  display_name: "Refactor Code"
+  short_description: "Refatora código conforme padrões arquiteturais"
+  default_prompt: "Use $refactor-code para refatorar este código preservando seu comportamento."

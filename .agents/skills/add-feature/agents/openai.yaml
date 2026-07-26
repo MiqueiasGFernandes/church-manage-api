@@ -1,0 +1,4 @@
+interface:
+  display_name: "Add Feature"
+  short_description: "Implementa features seguindo a arquitetura do projeto"
+  default_prompt: "Use $add-feature para implementar esta funcionalidade de ponta a ponta."

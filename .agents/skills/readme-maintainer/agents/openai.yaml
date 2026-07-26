@@ -1,0 +1,4 @@
+interface:
+  display_name: "README Maintainer"
+  short_description: "Cria e mantém o README sincronizado"
+  default_prompt: "Use $readme-maintainer para revisar e atualizar o README deste projeto."
