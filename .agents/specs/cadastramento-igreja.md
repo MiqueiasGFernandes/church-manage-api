@@ -175,9 +175,7 @@ Após a conclusão bem-sucedida:
 16. O sistema vincula o administrador à igreja.
 17. O sistema atribui o papel de administrador.
 18. O sistema cria as configurações padrão.
-19. O sistema registra o evento de domínio correspondente.
-20. O sistema solicita o envio do e-mail de confirmação.
-21. O sistema informa que o cadastro foi realizado.
+19. O sistema informa que o cadastro foi realizado e que a verificação de e-mail está pendente.
 
 ---
 
@@ -892,7 +890,6 @@ class RegisterChurch:
     church_membership_repository: ChurchMembershipRepository
     password_hasher: PasswordHasher
     unit_of_work: UnitOfWork
-    event_publisher: EventPublisher
     clock: Clock
     id_generator: IdGenerator
 ```
@@ -978,10 +975,6 @@ async def execute(
         await self._church_membership_repository.add(membership)
         await self._unit_of_work.commit()
 
-    await self._event_publisher.publish_all(
-        church.pull_domain_events()
-    )
-
     return RegisterChurchOutput(
         church_id=church.id.value,
         congregation_id=headquarters.id.value,
@@ -993,37 +986,12 @@ async def execute(
 
 ---
 
-## 18. Evento de domínio
+## 18. Integrações assíncronas adiadas
 
-Nome sugerido:
-
-```text
-ChurchRegistered
-```
-
-Estrutura:
-
-```python
-@dataclass(frozen=True, slots=True)
-class ChurchRegistered:
-    event_id: UUID
-    church_id: UUID
-    administrator_id: UUID
-    institutional_email: str
-    occurred_at: datetime
-```
-
-Possíveis consumidores:
-
-* envio de e-mail de boas-vindas;
-* envio de confirmação de e-mail;
-* criação de configurações complementares;
-* provisionamento de recursos;
-* auditoria;
-* métricas de aquisição;
-* integração futura com faturamento.
-
-A persistência principal não deverá depender da disponibilidade imediata desses consumidores.
+A publicação de eventos de domínio e seus consumidores não fazem parte da implementação atual
+do cadastro. O caso de uso deve concluir somente a criação transacional da estrutura inicial e
+informar que a verificação de e-mail está pendente. Quando integrações assíncronas forem
+introduzidas, seu contrato e sua garantia de entrega deverão ser especificados separadamente.
 
 ---
 
@@ -1322,7 +1290,6 @@ A senha, confirmação de senha e tokens não deverão aparecer nos logs.
 * cria congregação sede;
 * cria administrador inicial;
 * atribui papel correto;
-* gera evento de domínio.
 
 ### Testes do caso de uso
 
@@ -1331,7 +1298,6 @@ A senha, confirmação de senha e tokens não deverão aparecer nos logs.
 * rejeita slug existente;
 * rejeita CNPJ existente;
 * garante rollback em caso de falha;
-* não publica evento antes do commit;
 * retorna os identificadores criados.
 
 ### Testes de integração

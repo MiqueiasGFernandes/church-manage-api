@@ -3,7 +3,6 @@ from dependency_injector import containers, providers
 from modules.organizations.application.use_cases.register_church import RegisterChurch
 from modules.organizations.infrastructure.in_memory import (
     Argon2Hasher,
-    InMemoryEventPublisher,
     InMemoryRegistrationRepository,
     InMemoryUnitOfWork,
     SystemClock,
@@ -21,7 +20,6 @@ def build_postgres_register_church(
     password_hasher: Argon2Hasher,
     id_generator: UuidGenerator,
     clock: SystemClock,
-    event_publisher: InMemoryEventPublisher,
 ) -> RegisterChurch:
     session = database.create_session()
     repository = SqlAlchemyRegistrationRepository(session)
@@ -31,7 +29,6 @@ def build_postgres_register_church(
         password_hasher=password_hasher,
         id_generator=id_generator,
         clock=clock,
-        event_publisher=event_publisher,
     )
 
 
@@ -45,7 +42,6 @@ class Container(containers.DeclarativeContainer):
     password_hasher = providers.Singleton(Argon2Hasher)
     id_generator = providers.Singleton(UuidGenerator)
     clock = providers.Singleton(SystemClock)
-    event_publisher = providers.Singleton(InMemoryEventPublisher)
     in_memory_register_church = providers.Factory(
         RegisterChurch,
         repository=repository,
@@ -53,7 +49,6 @@ class Container(containers.DeclarativeContainer):
         password_hasher=password_hasher,
         id_generator=id_generator,
         clock=clock,
-        event_publisher=event_publisher,
     )
     database = providers.Singleton(PostgresDatabase, database_url=config.database_url)
     postgres_register_church = providers.Factory(
@@ -62,7 +57,6 @@ class Container(containers.DeclarativeContainer):
         password_hasher=password_hasher,
         id_generator=id_generator,
         clock=clock,
-        event_publisher=event_publisher,
     )
     register_church = providers.Selector(
         config.persistence_backend,

@@ -12,7 +12,6 @@ from modules.organizations.domain.model import (
     CNPJ,
     Church,
     ChurchMembership,
-    ChurchRegistered,
     ChurchSettings,
     ChurchSlug,
     Congregation,
@@ -104,11 +103,3 @@ class UuidGenerator:
 class SystemClock:
     def now(self) -> datetime:
         return datetime.now(timezone.utc)
-
-
-class InMemoryEventPublisher:
-    def __init__(self) -> None:
-        self.events: list[ChurchRegistered] = []
-
-    async def publish(self, event: ChurchRegistered) -> None:
-        self.events.append(event)

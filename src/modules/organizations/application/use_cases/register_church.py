@@ -13,7 +13,6 @@ from modules.organizations.application.errors.register_church import (
 )
 from modules.organizations.application.ports.registration_services import (
     IClock,
-    IEventPublisher,
     IIdGenerator,
     IPasswordHasher,
     IUnitOfWork,
@@ -29,7 +28,6 @@ from modules.organizations.domain.model import (
     ChurchId,
     ChurchMembership,
     ChurchName,
-    ChurchRegistered,
     ChurchRole,
     ChurchSettings,
     ChurchSlug,
@@ -54,14 +52,12 @@ class RegisterChurch:
         password_hasher: IPasswordHasher,
         id_generator: IIdGenerator,
         clock: IClock,
-        event_publisher: IEventPublisher,
     ) -> None:
         self._repository = repository
         self._unit_of_work = unit_of_work
         self._password_hasher = password_hasher
         self._id_generator = id_generator
         self._clock = clock
-        self._event_publisher = event_publisher
 
     async def execute(self, data: RegisterChurchInput) -> RegisterChurchOutput:
         self._validate_registration(data)
@@ -116,8 +112,6 @@ class RegisterChurch:
             now,
         )
         settings = ChurchSettings(church_id, "pt-BR", "BRL", timezone, "DD/MM/YYYY", "BR")
-        event = ChurchRegistered(church_id, user_id, church.institutional_email, now)
-        church.events.append(event)
 
         async with self._unit_of_work:
             if await self._repository.user_exists_by_email(administrator_email):
@@ -134,7 +128,6 @@ class RegisterChurch:
             await self._repository.add_membership(membership)
             await self._repository.add_settings(settings)
             await self._unit_of_work.commit()
-        await self._event_publisher.publish(event)
         return RegisterChurchOutput(
             church_id.value, congregation_id.value, user_id.value, church.status.value, True
         )

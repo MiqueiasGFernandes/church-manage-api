@@ -28,7 +28,6 @@ configurações padrão.
 - Validação de CNPJ, e-mail, telefone, slug e fuso horário no domínio.
 - Detecção de e-mail, slug e CNPJ duplicados.
 - Hash de senhas com Argon2.
-- Publicação do evento de domínio `ChurchRegistered`.
 - Persistência opcional em PostgreSQL com transação atômica para o cadastro completo.
 - Respostas tipadas e documentação OpenAPI.
 
@@ -37,7 +36,7 @@ configurações padrão.
 O projeto utiliza um monólito modular orientado por casos de uso e organizado segundo Clean
 Architecture:
 
-- `domain`: entidades, value objects, eventos e regras de negócio;
+- `domain`: entidades, value objects e regras de negócio;
 - `application`: DTOs, casos de uso, contratos de repositórios e demais portas;
 - `infrastructure`: implementações técnicas dos contratos internos;
 - `presentation`: rotas HTTP, schemas e tradução de erros.
@@ -234,7 +233,6 @@ uv run ruff format src tests
 
 - O backend em memória perde os dados quando o processo é reiniciado; use PostgreSQL para
   persistência durável.
-- A publicação de eventos ainda usa uma implementação em memória.
 - A suíte Python valida mappers e transações; o schema SQL deve ser validado no PostgreSQL
   local fornecido pelo Docker Compose.
 - O repositório não possui uma licença declarada.

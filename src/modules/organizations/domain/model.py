@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 import re
-from dataclasses import dataclass, field
+from dataclasses import dataclass
 from datetime import datetime
 from enum import Enum
 from uuid import UUID
@@ -188,14 +188,6 @@ class ChurchRole(str, Enum):
     CHURCH_ADMIN = "church_admin"
 
 
-@dataclass(frozen=True, slots=True)
-class ChurchRegistered:
-    church_id: ChurchId
-    administrator_id: UserId
-    institutional_email: EmailAddress
-    occurred_at: datetime
-
-
 @dataclass(slots=True)
 class Church:
     id: ChurchId
@@ -209,7 +201,6 @@ class Church:
     timezone: TimeZone
     status: ChurchStatus
     created_at: datetime
-    events: list[ChurchRegistered] = field(default_factory=lambda: [])
 
 
 @dataclass(frozen=True, slots=True)

@@ -16,7 +16,6 @@ from modules.organizations.application.errors.register_church import (
 )
 from modules.organizations.application.use_cases.register_church import RegisterChurch
 from modules.organizations.infrastructure.in_memory import (
-    InMemoryEventPublisher,
     InMemoryRegistrationRepository,
     InMemoryUnitOfWork,
 )
@@ -75,14 +74,12 @@ def valid_input() -> RegisterChurchInput:
 class RegisterChurchTest(unittest.IsolatedAsyncioTestCase):
     def setUp(self) -> None:
         self.repository = InMemoryRegistrationRepository()
-        self.publisher = InMemoryEventPublisher()
         self.use_case = RegisterChurch(
             repository=self.repository,
             unit_of_work=InMemoryUnitOfWork(self.repository),
             password_hasher=FakeHasher(),
             id_generator=SequentialIdGenerator(),
             clock=FixedClock(),
-            event_publisher=self.publisher,
         )
 
     async def test_registers_complete_church_atomically(self) -> None:
@@ -97,7 +94,6 @@ class RegisterChurchTest(unittest.IsolatedAsyncioTestCase):
         self.assertNotIn("Senha123", self.repository.users[0].password_hash)
         self.assertEqual(self.repository.memberships[0].role.value, "church_admin")
         self.assertEqual(self.repository.settings[0].locale, "pt-BR")
-        self.assertEqual(len(self.publisher.events), 1)
 
     async def test_rejects_existing_administrator_email_without_side_effects(self) -> None:
         await self.use_case.execute(valid_input())

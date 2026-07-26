@@ -5,8 +5,6 @@ from types import TracebackType
 from typing import Protocol
 from uuid import UUID
 
-from modules.organizations.domain.model import ChurchRegistered
-
 
 class IUnitOfWork(Protocol):
     async def __aenter__(self) -> IUnitOfWork: ...
@@ -33,7 +31,3 @@ class IIdGenerator(Protocol):
 
 class IClock(Protocol):
     def now(self) -> datetime: ...
-
-
-class IEventPublisher(Protocol):
-    async def publish(self, event: ChurchRegistered) -> None: ...
