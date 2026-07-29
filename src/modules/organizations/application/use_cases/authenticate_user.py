@@ -1,3 +1,4 @@
+import logging
 from datetime import timedelta
 
 from modules.organizations.application.dto.auth import (
@@ -23,6 +24,8 @@ from modules.organizations.application.repositories.auth_repository import (
 )
 from modules.organizations.domain.model import EmailAddress, UserStatus
 from modules.organizations.domain.use_cases.authenticate_user import IAuthenticateUser
+
+logger = logging.getLogger(f"church_manage.{__name__}")
 
 
 class AuthenticateUser(IAuthenticateUser):
@@ -91,6 +94,23 @@ class AuthenticateUser(IAuthenticateUser):
                 result = TokenPair(access, refresh, expires_in)
                 await self._unit_of_work.commit()
         if failure is not None:
+            logger.warning(
+                "user_authentication_rejected",
+                extra={
+                    "operation": "authenticate_user",
+                    "error_code": failure.code,
+                    "action": "Review authentication audit events if failures persist.",
+                },
+            )
             raise failure
         assert result is not None
+        assert user is not None
+        logger.info(
+            "user_authenticated",
+            extra={
+                "operation": "authenticate_user",
+                "user_id": str(user.id.value),
+                "action": "No action required.",
+            },
+        )
         return result

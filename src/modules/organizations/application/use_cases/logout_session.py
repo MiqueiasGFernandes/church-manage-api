@@ -1,3 +1,5 @@
+import logging
+
 from modules.organizations.application.dto.auth import (
     AuthenticatedUser,
 )
@@ -10,6 +12,8 @@ from modules.organizations.application.repositories.auth_repository import (
     SecurityAuditEvent,
 )
 from modules.organizations.domain.use_cases.logout_session import ILogoutSession
+
+logger = logging.getLogger(f"church_manage.{__name__}")
 
 
 class LogoutSession(ILogoutSession):
@@ -30,3 +34,11 @@ class LogoutSession(ILogoutSession):
                 )
             )
             await self._unit_of_work.commit()
+        logger.info(
+            "session_logged_out",
+            extra={
+                "operation": "logout_session",
+                "user_id": str(actor.user_id),
+                "action": "No action required.",
+            },
+        )

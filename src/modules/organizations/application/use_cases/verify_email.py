@@ -1,3 +1,5 @@
+import logging
+
 from modules.organizations.application.errors.auth import (
     InvalidEmailVerificationTokenError,
 )
@@ -13,6 +15,8 @@ from modules.organizations.application.repositories.auth_repository import (
     SecurityAuditEvent,
 )
 from modules.organizations.domain.use_cases.verify_email import IVerifyEmail
+
+logger = logging.getLogger(f"church_manage.{__name__}")
 
 
 class VerifyEmail(IVerifyEmail):
@@ -54,3 +58,11 @@ class VerifyEmail(IVerifyEmail):
                 SecurityAuditEvent("EMAIL_VERIFIED", now, actor_user_id=user.id.value)
             )
             await self._unit_of_work.commit()
+        logger.info(
+            "email_verified",
+            extra={
+                "operation": "verify_email",
+                "user_id": str(user.id.value),
+                "action": "No action required.",
+            },
+        )

@@ -1,3 +1,5 @@
+import logging
+
 from modules.organizations.application.errors.auth import (
     InvalidPasswordResetTokenError,
 )
@@ -16,6 +18,8 @@ from modules.organizations.application.repositories.auth_repository import (
 from modules.organizations.application.use_cases.password_policy import ensure_valid_password
 from modules.organizations.domain.model import UserStatus
 from modules.organizations.domain.use_cases.reset_password import IResetPassword
+
+logger = logging.getLogger(f"church_manage.{__name__}")
 
 
 class ResetPassword(IResetPassword):
@@ -51,3 +55,11 @@ class ResetPassword(IResetPassword):
                 SecurityAuditEvent("PASSWORD_RESET_SUCCEEDED", now, actor_user_id=user.id.value)
             )
             await self._unit_of_work.commit()
+        logger.info(
+            "password_reset_completed",
+            extra={
+                "operation": "reset_password",
+                "user_id": str(user.id.value),
+                "action": "No action required.",
+            },
+        )

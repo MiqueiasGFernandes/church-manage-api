@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import logging
 from types import TracebackType
 from typing import Never
 
@@ -12,6 +13,8 @@ from modules.organizations.application.errors.register_church import (
     UserEmailAlreadyExistsError,
 )
 from modules.organizations.application.ports.registration_services import IUnitOfWork
+
+logger = logging.getLogger(f"church_manage.{__name__}")
 
 
 class SqlAlchemyUnitOfWork(IUnitOfWork):
@@ -49,15 +52,29 @@ class SqlAlchemyUnitOfWork(IUnitOfWork):
     def _raise_registration_conflict(exc: IntegrityError) -> Never:
         database_error = str(exc.orig)
         if "uq_users_email" in database_error:
+            SqlAlchemyUnitOfWork._log_conflict("user_email")
             raise UserEmailAlreadyExistsError(
                 "Já existe uma conta cadastrada com este e-mail."
             ) from exc
         if "uq_churches_slug" in database_error:
+            SqlAlchemyUnitOfWork._log_conflict("church_slug")
             raise ChurchSlugAlreadyExistsError(
                 "O endereço público escolhido já está em uso."
             ) from exc
         if "uq_churches_document" in database_error:
+            SqlAlchemyUnitOfWork._log_conflict("church_document")
             raise ChurchDocumentAlreadyExistsError(
                 "Já existe uma igreja cadastrada com este CNPJ."
             ) from exc
         raise exc
+
+    @staticmethod
+    def _log_conflict(resource: str) -> None:
+        logger.warning(
+            "registration_persistence_conflict_detected",
+            extra={
+                "operation": "commit_registration",
+                "conflicting_resource": resource,
+                "action": "Return the conflict response and ask the client to use unique data.",
+            },
+        )

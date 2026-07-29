@@ -1,3 +1,4 @@
+import logging
 from datetime import timedelta
 
 from modules.organizations.application.ports.auth import (
@@ -16,6 +17,8 @@ from modules.organizations.domain.model import EmailAddress, UserStatus
 from modules.organizations.domain.use_cases.resend_email_verification import (
     IResendEmailVerification,
 )
+
+logger = logging.getLogger(f"church_manage.{__name__}")
 
 
 class ResendEmailVerification(IResendEmailVerification):
@@ -52,3 +55,12 @@ class ResendEmailVerification(IResendEmailVerification):
                 await self._unit_of_work.commit()
         if token is not None:
             await self._email_sender.send_email_verification(normalized.value, token)
+            assert user is not None
+            logger.info(
+                "email_verification_resent",
+                extra={
+                    "operation": "resend_email_verification",
+                    "user_id": str(user.id.value),
+                    "action": "No action required.",
+                },
+            )

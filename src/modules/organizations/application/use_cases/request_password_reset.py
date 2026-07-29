@@ -1,3 +1,4 @@
+import logging
 from datetime import timedelta
 
 from modules.organizations.application.ports.auth import (
@@ -14,6 +15,8 @@ from modules.organizations.application.repositories.auth_repository import (
 )
 from modules.organizations.domain.model import EmailAddress, UserStatus
 from modules.organizations.domain.use_cases.request_password_reset import IRequestPasswordReset
+
+logger = logging.getLogger(f"church_manage.{__name__}")
 
 
 class RequestPasswordReset(IRequestPasswordReset):
@@ -50,3 +53,12 @@ class RequestPasswordReset(IRequestPasswordReset):
                 await self._unit_of_work.commit()
         if token is not None:
             await self._email_sender.send_password_reset(normalized.value, token)
+            assert user is not None
+            logger.info(
+                "password_reset_requested",
+                extra={
+                    "operation": "request_password_reset",
+                    "user_id": str(user.id.value),
+                    "action": "No action required.",
+                },
+            )

@@ -1,4 +1,5 @@
 import hashlib
+import logging
 from datetime import timedelta
 
 from sqlalchemy import case, delete, func
@@ -13,6 +14,8 @@ from modules.organizations.application.ports.auth import (
 from modules.organizations.application.ports.registration_services import IClock
 from modules.organizations.infrastructure.persistence.database import PostgresDatabase
 from modules.organizations.infrastructure.persistence.models import RateLimitModel
+
+logger = logging.getLogger(f"church_manage.{__name__}")
 
 
 class PostgresFixedWindowRateLimiter(IRateLimiter):
@@ -66,6 +69,14 @@ class PostgresFixedWindowRateLimiter(IRateLimiter):
             await session.close()
 
         if attempts > policy.limit:
+            logger.warning(
+                "rate_limit_exceeded",
+                extra={
+                    "operation": "enforce_rate_limit",
+                    "rate_limit_action": action.value,
+                    "action": "Wait for the configured rate-limit window before retrying.",
+                },
+            )
             raise RateLimitExceededError(
                 "Limite de tentativas excedido. Tente novamente mais tarde."
             )
