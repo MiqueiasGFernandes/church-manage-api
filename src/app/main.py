@@ -7,10 +7,16 @@ from uuid import uuid4
 
 from fastapi import FastAPI, Request, Response, status
 from fastapi.middleware.cors import CORSMiddleware
+from starlette.middleware.trustedhost import TrustedHostMiddleware
+
+from app.container import Container
+from app.security import SecurityHeadersMiddleware
+
 from starlette.middleware.base import RequestResponseEndpoint
 
 from app.container import Container
 from app.observability import bind_request_id, configure_logging, get_logger, reset_request_id
+
 from app.settings import (
     AppEnvironment,
     CorsSettings,
@@ -73,6 +79,20 @@ def create_app() -> FastAPI:
             os.getenv("CORS_ALLOW_CREDENTIALS", "true"), "CORS_ALLOW_CREDENTIALS"
         ),
     )
+    allowed_hosts = tuple(
+        host.strip()
+        for host in os.getenv("ALLOWED_HOSTS", "localhost,127.0.0.1,testserver,test").split(",")
+        if host.strip()
+    )
+    if not allowed_hosts:
+        raise ValueError("ALLOWED_HOSTS deve possuir ao menos um valor.")
+    api_docs_enabled = parse_boolean(
+        os.getenv(
+            "API_DOCS_ENABLED",
+            "false" if environment is AppEnvironment.PRODUCTION else "true",
+        ),
+        "API_DOCS_ENABLED",
+    )
     if environment is AppEnvironment.PRODUCTION:
         ProductionSecuritySettings(
             persistence_backend=persistence_backend,
@@ -86,6 +106,7 @@ def create_app() -> FastAPI:
             public_app_url=public_app_url,
             cors_allowed_origins=cors_settings.allowed_origins,
             cors_allow_credentials=cors_settings.allow_credentials,
+            allowed_hosts=allowed_hosts,
         ).validate()
     container.config.persistence_backend.from_value(persistence_backend)
     container.config.database_url.from_value(database_url)
@@ -218,7 +239,17 @@ def create_app() -> FastAPI:
     async def resolve_change_password():
         return container.change_password()
 
-    application = FastAPI(title="Reuniva API", version="0.1.0", lifespan=lifespan)
+    documentation_url = "/docs" if api_docs_enabled else None
+    redoc_url = "/redoc" if api_docs_enabled else None
+    openapi_url = "/openapi.json" if api_docs_enabled else None
+    application = FastAPI(
+        title="Reuniva API",
+        version="0.1.0",
+        lifespan=lifespan,
+        docs_url=documentation_url,
+        redoc_url=redoc_url,
+        openapi_url=openapi_url,
+    )
 
     async def log_request(request: Request, call_next: RequestResponseEndpoint) -> Response:
         if request.url.path == "/health":
@@ -289,6 +320,14 @@ def create_app() -> FastAPI:
     application.state.auth_cookie_secure = auth_cookie_secure
     application.state.cors_allowed_origins = cors_settings.allowed_origins
     application.state.container = container
+    application.add_middleware(
+        TrustedHostMiddleware,
+        allowed_hosts=list(allowed_hosts),
+    )
+    application.add_middleware(
+        SecurityHeadersMiddleware,
+        enable_hsts=environment is AppEnvironment.PRODUCTION,
+    )
     application.add_middleware(
         CORSMiddleware,
         allow_origins=list(cors_settings.allowed_origins),
