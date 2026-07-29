@@ -3,7 +3,7 @@ import secrets
 from collections.abc import AsyncGenerator
 from contextlib import asynccontextmanager
 
-from fastapi import FastAPI
+from fastapi import FastAPI, Response, status
 from fastapi.middleware.cors import CORSMiddleware
 
 from app.container import Container
@@ -194,6 +194,19 @@ def create_app() -> FastAPI:
         return container.change_password()
 
     application = FastAPI(title="Reuniva API", version="0.1.0", lifespan=lifespan)
+
+    async def _health() -> Response:
+        return Response(status_code=status.HTTP_204_NO_CONTENT)
+
+    application.add_api_route(
+        "/health",
+        _health,
+        methods=["GET"],
+        status_code=status.HTTP_204_NO_CONTENT,
+        response_class=Response,
+        include_in_schema=False,
+    )
+
     application.state.auth_cookie_secure = auth_cookie_secure
     application.state.cors_allowed_origins = cors_settings.allowed_origins
     application.state.container = container
