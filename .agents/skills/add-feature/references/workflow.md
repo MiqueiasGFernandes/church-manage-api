@@ -628,7 +628,18 @@ class MemberRepository(Protocol):
 
 A aplicação depende da abstração.
 
-A infraestrutura implementa a abstração.
+A infraestrutura implementa a abstração explicitamente por herança. Não dependa
+somente da conformidade estrutural implícita de `Protocol`:
+
+```python
+class SqlAlchemyMemberRepository(IMemberRepository):
+    ...
+```
+
+Essa regra se aplica a toda porta e adapter, incluindo repositories, Unit of
+Work, gateways, publishers, rate limiters, clientes externos, hashing, relógio,
+storage e e-mail. Implementações concretas devem aparecer somente na
+infraestrutura, no Composition Root e em testes diretos do adapter.
 
 ---
 
@@ -1425,6 +1436,7 @@ A ordem pode variar quando não houver alteração em alguma camada.
 * [ ] Repositórios convertem entre domínio e persistência.
 * [ ] Erros são traduzidos na fronteira correta.
 * [ ] Os adapters respeitam os ports internos.
+* [ ] Cada adapter implementa explicitamente seu port por herança.
 
 ## Infraestrutura
 

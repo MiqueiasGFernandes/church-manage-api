@@ -427,6 +427,42 @@ Não criar módulos agregadores ou arquivos-barrel que reexportem vários casos 
 uso e restaurem o acoplamento removido. Cada consumidor deve importar o contrato
 ou a implementação diretamente do módulo da intenção utilizada.
 
+## 5.4 Implementação explícita de portas e DIP
+
+Toda dependência que atravesse uma fronteira arquitetural deve possuir uma porta
+pequena e orientada ao consumidor, definida como `Protocol` em uma camada interna.
+Isso inclui repositories, Unit of Work, gateways, publishers, rate limiters,
+clientes externos, hashing, relógio, geração de identificadores, storage e e-mail.
+
+Todo adapter concreto deve implementar explicitamente sua porta por herança e
+preservar integralmente a assinatura do contrato. Não depender apenas da
+conformidade estrutural implícita do `Protocol`, mesmo quando o Pyright a aceitar.
+
+Exemplo:
+
+```python
+class IRateLimiter(Protocol):
+    async def ensure_allowed(self, action: RateLimitAction, key: str) -> None:
+        ...
+
+
+class PostgresFixedWindowRateLimiter(IRateLimiter):
+    async def ensure_allowed(self, action: RateLimitAction, key: str) -> None:
+        ...
+```
+
+Casos de uso, regras de aplicação e consumidores das camadas internas devem
+tipar suas dependências pela porta. Implementações concretas só podem ser
+referenciadas na infraestrutura, no Composition Root e em testes que exercitem
+diretamente o adapter.
+
+Ao criar ou alterar uma feature, o agente deve verificar explicitamente:
+
+* se cada dependência externa possui uma porta interna;
+* se cada adapter declara a implementação dessa porta por herança;
+* se o Composition Root associa porta e implementação concreta;
+* se nenhuma camada interna importa a implementação concreta.
+
 ---
 
 # 6. Tipagem forte em Python
