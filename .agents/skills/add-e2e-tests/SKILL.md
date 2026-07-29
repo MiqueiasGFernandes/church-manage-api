@@ -7,8 +7,9 @@ description: Adiciona e mantém testes end-to-end assíncronos com pytest e http
 
 1. Ler integralmente [references/workflow.md](references/workflow.md) antes de analisar ou alterar testes.
 2. Ler as instruções do repositório, requisitos, regras de domínio, contrato HTTP e código do fluxo afetado.
-3. Identificar a regra de negócio e descrevê-la como comportamento observável, sem acoplar o teste a classes internas.
-4. Implementar o menor cenário E2E que atravesse a API com `httpx.AsyncClient`, usando a aplicação e a composição de dependências reais.
-5. Usar PostgreSQL real quando o comportamento envolver persistência, constraints, transações ou isolamento por tenant.
-6. Executar primeiro o teste específico e depois as validações de testes, lint, formatação e tipos aplicáveis.
-7. Relatar cenários cobertos, arquivos alterados, comandos executados e riscos residuais.
+3. Antes de alterar arquivos versionados, confirmar o Git Flow `feature/<descricao-curta> → develop → main` definido no `AGENTS.md`.
+4. Identificar a regra de negócio e descrevê-la como comportamento observável, sem acoplar o teste a classes internas.
+5. Implementar o menor cenário E2E que atravesse a API com `httpx.AsyncClient`, usando a aplicação e a composição de dependências reais.
+6. Usar PostgreSQL real quando o comportamento envolver persistência, constraints, transações ou isolamento por tenant.
+7. Executar primeiro o teste específico e depois as validações de testes, lint, formatação e tipos aplicáveis.
+8. Relatar cenários cobertos, arquivos alterados, comandos executados e riscos residuais.

@@ -2233,6 +2233,23 @@ artefatos de build
 clientes OpenAPI
 ```
 
+## 34.1 Git Flow
+
+Toda alteração em arquivo versionado deve seguir este fluxo de integração:
+
+```text
+feature/<descricao-curta> → develop → main
+```
+
+Regras obrigatórias:
+
+* criar a feature branch a partir de `develop` atualizado;
+* integrar a feature branch somente em `develop`, após as validações aplicáveis;
+* promover `develop` para `main` somente quando o conjunto integrado estiver pronto para release;
+* nunca integrar uma feature branch diretamente em `main`;
+* não realizar commits diretamente em `develop` ou `main`;
+* antes de alterar arquivos versionados, verificar a branch atual e preservar mudanças locais existentes.
+
 ---
 
 # 35. Critérios de conclusão
