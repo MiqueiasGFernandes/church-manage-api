@@ -1,5 +1,5 @@
 @startuml
-title Church Manage API — Modelo Entidade-Relacionamento
+title Reuniva API — Modelo Entidade-Relacionamento
 
 hide methods
 hide stereotypes

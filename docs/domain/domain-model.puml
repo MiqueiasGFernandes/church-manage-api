@@ -1,5 +1,5 @@
 @startuml
-title Church Manage API — Modelo de Domínio de Organizações
+title Reuniva API — Modelo de Domínio de Organizações
 
 hide empty methods
 skinparam linetype ortho

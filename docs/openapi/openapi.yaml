@@ -1,7 +1,7 @@
 openapi: 3.1.0
 
 info:
-  title: Church Manage API
+  title: Reuniva API
   version: 0.1.0
   description: |
     API HTTP para gestão de igrejas. O contrato documenta somente as

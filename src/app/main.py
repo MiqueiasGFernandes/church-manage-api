@@ -193,7 +193,7 @@ def create_app() -> FastAPI:
     async def resolve_change_password():
         return container.change_password()
 
-    application = FastAPI(title="Church Manage API", version="0.1.0", lifespan=lifespan)
+    application = FastAPI(title="Reuniva API", version="0.1.0", lifespan=lifespan)
     application.state.auth_cookie_secure = auth_cookie_secure
     application.state.cors_allowed_origins = cors_settings.allowed_origins
     application.state.container = container
