@@ -1,12 +1,16 @@
 import os
 import secrets
+import time
 from collections.abc import AsyncGenerator
 from contextlib import asynccontextmanager
+from uuid import uuid4
 
-from fastapi import FastAPI, Response, status
+from fastapi import FastAPI, Request, Response, status
 from fastapi.middleware.cors import CORSMiddleware
+from starlette.middleware.base import RequestResponseEndpoint
 
 from app.container import Container
+from app.observability import bind_request_id, configure_logging, get_logger, reset_request_id
 from app.settings import (
     AppEnvironment,
     CorsSettings,
@@ -49,6 +53,8 @@ from modules.organizations.presentation.http import (
 def create_app() -> FastAPI:
     container = Container()
     environment = parse_environment(os.getenv("APP_ENV", "development"))
+    configure_logging(os.getenv("LOG_LEVEL", "INFO"))
+    logger = get_logger(__name__)
     persistence_backend = os.getenv("PERSISTENCE_BACKEND", "memory")
     database_url = os.getenv("DATABASE_URL", "")
     configured_auth_token_secret = os.getenv("AUTH_TOKEN_SECRET")
@@ -141,9 +147,28 @@ def create_app() -> FastAPI:
 
     @asynccontextmanager
     async def lifespan(_: FastAPI) -> AsyncGenerator[None]:
-        yield
-        if persistence_backend == "postgresql":
-            await container.database().dispose()
+        logger.info(
+            "application_started",
+            extra={
+                "operation": "application_lifecycle",
+                "environment": environment.value,
+                "persistence_backend": persistence_backend,
+                "action": "No action required.",
+            },
+        )
+        try:
+            yield
+        finally:
+            if persistence_backend == "postgresql":
+                await container.database().dispose()
+            logger.info(
+                "application_stopped",
+                extra={
+                    "operation": "application_lifecycle",
+                    "environment": environment.value,
+                    "action": "No action required.",
+                },
+            )
 
     async def resolve_register_church() -> IRegisterChurch:
         return container.register_church()
@@ -194,6 +219,60 @@ def create_app() -> FastAPI:
         return container.change_password()
 
     application = FastAPI(title="Reuniva API", version="0.1.0", lifespan=lifespan)
+
+    async def log_request(request: Request, call_next: RequestResponseEndpoint) -> Response:
+        if request.url.path == "/health":
+            return await call_next(request)
+
+        request_id = request.headers.get("X-Request-ID") or str(uuid4())
+        request_id_token = bind_request_id(request_id)
+        started_at = time.perf_counter()
+        context: dict[str, object] = {
+            "request_id": request_id,
+            "operation": "http_request",
+            "method": request.method,
+            "path": request.url.path,
+        }
+        try:
+            try:
+                response = await call_next(request)
+            except Exception:
+                logger.exception(
+                    "http_request_failed_unexpectedly",
+                    extra={
+                        **context,
+                        "duration_ms": round((time.perf_counter() - started_at) * 1000, 2),
+                        "action": (
+                            "Inspect the exception and request context, then correct or mitigate "
+                            "the failure."
+                        ),
+                    },
+                )
+                raise
+
+            response.headers["X-Request-ID"] = request_id
+            log_method = logger.warning if response.status_code >= 400 else logger.info
+            action = (
+                "Review the error code and request context before retrying the operation."
+                if response.status_code >= 400
+                else "No action required."
+            )
+            error_code = getattr(request.state, "error_code", None)
+            log_method(
+                "http_request_completed",
+                extra={
+                    **context,
+                    "status_code": response.status_code,
+                    **({"error_code": error_code} if isinstance(error_code, str) else {}),
+                    "duration_ms": round((time.perf_counter() - started_at) * 1000, 2),
+                    "action": action,
+                },
+            )
+            return response
+        finally:
+            reset_request_id(request_id_token)
+
+    application.middleware("http")(log_request)
 
     async def _health() -> Response:
         return Response(status_code=status.HTTP_204_NO_CONTENT)

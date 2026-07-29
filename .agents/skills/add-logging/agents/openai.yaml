@@ -1,0 +1,4 @@
+interface:
+  display_name: "Adicionar logs"
+  short_description: "Adiciona logs úteis, seguros e acionáveis"
+  default_prompt: "Use $add-logging para adicionar logs estruturados e não redundantes a este fluxo."

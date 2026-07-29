@@ -388,7 +388,7 @@ async def church_me(
     )
 
 
-async def auth_error_handler(_: Request, exc: Exception) -> JSONResponse:
+async def auth_error_handler(request: Request, exc: Exception) -> JSONResponse:
     assert isinstance(exc, AuthenticationError)
     if isinstance(exc, SessionNotFoundError):
         status_code = 404
@@ -404,6 +404,7 @@ async def auth_error_handler(_: Request, exc: Exception) -> JSONResponse:
         detail = "E-mail ou senha inválidos."
     else:
         detail = str(exc)
+    request.state.error_code = exc.code
     return JSONResponse(
         status_code=status_code, content={"error": {"code": exc.code, "message": detail}}
     )

@@ -1,3 +1,5 @@
+import logging
+
 from modules.organizations.application.dto.auth import (
     AuthenticatedUser,
 )
@@ -18,6 +20,8 @@ from modules.organizations.application.repositories.auth_repository import (
 )
 from modules.organizations.application.use_cases.password_policy import ensure_valid_password
 from modules.organizations.domain.use_cases.change_password import IChangePassword
+
+logger = logging.getLogger(f"church_manage.{__name__}")
 
 
 class ChangePassword(IChangePassword):
@@ -59,3 +63,11 @@ class ChangePassword(IChangePassword):
                 await self._unit_of_work.commit()
         if invalid_current:
             raise InvalidCredentialsError("Senha atual inválida.")
+        logger.info(
+            "password_changed",
+            extra={
+                "operation": "change_password",
+                "user_id": str(actor.user_id),
+                "action": "No action required.",
+            },
+        )

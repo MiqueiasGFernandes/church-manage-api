@@ -1,3 +1,4 @@
+import logging
 from uuid import UUID
 
 from modules.organizations.application.dto.auth import (
@@ -18,6 +19,8 @@ from modules.organizations.application.repositories.auth_repository import (
 from modules.organizations.application.use_cases.permissions import ROLE_PERMISSIONS
 from modules.organizations.domain.model import MembershipStatus
 from modules.organizations.domain.use_cases.require_permission import IRequirePermission
+
+logger = logging.getLogger(f"church_manage.{__name__}")
 
 
 class RequirePermission(IRequirePermission):
@@ -53,4 +56,15 @@ class RequirePermission(IRequirePermission):
                 )
                 await self._unit_of_work.commit()
         if denied_error is not None:
+            logger.warning(
+                "authorization_denied",
+                extra={
+                    "operation": "require_permission",
+                    "user_id": str(actor.user_id),
+                    "church_id": str(church_id),
+                    "permission": permission,
+                    "error_code": denied_error.code,
+                    "action": "Review membership, role, and required permission assignments.",
+                },
+            )
             raise denied_error

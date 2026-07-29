@@ -86,7 +86,11 @@ class RegisterChurchTest(unittest.IsolatedAsyncioTestCase):
         )
 
     async def test_registers_complete_church_atomically(self) -> None:
-        result = await self.use_case.execute(valid_input())
+        with self.assertLogs(
+            "church_manage.modules.organizations.application.use_cases.register_church",
+            level="INFO",
+        ) as captured:
+            result = await self.use_case.execute(valid_input())
 
         self.assertEqual(result.church_status, "pending_email_verification")
         self.assertTrue(result.email_verification_required)
@@ -97,6 +101,9 @@ class RegisterChurchTest(unittest.IsolatedAsyncioTestCase):
         self.assertNotIn("SenhaSegura123", self.repository.users[0].password_hash)
         self.assertEqual(self.repository.memberships[0].role.value, "church_owner")
         self.assertEqual(self.repository.settings[0].locale, "pt-BR")
+        self.assertEqual(len(captured.records), 1)
+        self.assertEqual(captured.records[0].getMessage(), "church_registration_completed")
+        self.assertNotIn("JOAO@IGREJA.COM.BR", str(captured.records[0].__dict__))
 
     async def test_rejects_existing_administrator_email_without_side_effects(self) -> None:
         await self.use_case.execute(valid_input())
