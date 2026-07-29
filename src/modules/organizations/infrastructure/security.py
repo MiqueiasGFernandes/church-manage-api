@@ -10,6 +10,11 @@ from email.message import EmailMessage
 from uuid import UUID, uuid4
 
 from modules.organizations.application.errors.auth import RateLimitExceededError
+from modules.organizations.application.ports.auth import (
+    IRateLimiter,
+    RateLimitAction,
+    RateLimitPolicies,
+)
 from modules.organizations.application.ports.registration_services import IClock
 
 
@@ -90,15 +95,17 @@ class InMemoryEmailSender:
         self.password_resets.append((email, token))
 
 
-class FixedWindowRateLimiter:
-    def __init__(self, clock: IClock) -> None:
+class FixedWindowRateLimiter(IRateLimiter):
+    def __init__(self, clock: IClock, policies: RateLimitPolicies) -> None:
         self._clock = clock
+        self._policies = policies
         self._attempts: dict[str, list[datetime]] = {}
 
-    async def ensure_allowed(self, key: str, limit: int, window_seconds: int) -> None:
-        cutoff = self._clock.now() - timedelta(seconds=window_seconds)
+    async def ensure_allowed(self, action: RateLimitAction, key: str) -> None:
+        policy = self._policies[action]
+        cutoff = self._clock.now() - timedelta(seconds=policy.window_seconds)
         attempts = [instant for instant in self._attempts.get(key, []) if instant > cutoff]
-        if len(attempts) >= limit:
+        if len(attempts) >= policy.limit:
             raise RateLimitExceededError(
                 "Limite de tentativas excedido. Tente novamente mais tarde."
             )

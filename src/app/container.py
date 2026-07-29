@@ -1,6 +1,10 @@
 from dependency_injector import containers, providers
 
-from modules.organizations.application.ports.auth import IEmailSender
+from modules.organizations.application.ports.auth import (
+    IEmailSender,
+    RateLimitAction,
+    RateLimitPolicy,
+)
 from modules.organizations.application.use_cases.authenticate_user import AuthenticateUser
 from modules.organizations.application.use_cases.change_password import ChangePassword
 from modules.organizations.application.use_cases.get_current_user import GetCurrentUser
@@ -29,6 +33,9 @@ from modules.organizations.infrastructure.persistence.auth_repository import (
     SqlAlchemyAuthRepository,
 )
 from modules.organizations.infrastructure.persistence.database import PostgresDatabase
+from modules.organizations.infrastructure.persistence.rate_limiter import (
+    PostgresFixedWindowRateLimiter,
+)
 from modules.organizations.infrastructure.persistence.registration_repository import (
     SqlAlchemyRegistrationRepository,
 )
@@ -43,6 +50,43 @@ from modules.organizations.infrastructure.security import (
 
 def parse_bool(value: str) -> bool:
     return value.lower() == "true"
+
+
+def build_rate_limit_policies(
+    verify_email_limit: int,
+    verify_email_window_seconds: int,
+    resend_email_verification_limit: int,
+    resend_email_verification_window_seconds: int,
+    forgot_password_limit: int,
+    forgot_password_window_seconds: int,
+    reset_password_limit: int,
+    reset_password_window_seconds: int,
+    login_limit: int,
+    login_window_seconds: int,
+    refresh_limit: int,
+    refresh_window_seconds: int,
+    change_password_limit: int,
+    change_password_window_seconds: int,
+) -> dict[RateLimitAction, RateLimitPolicy]:
+    return {
+        RateLimitAction.VERIFY_EMAIL: RateLimitPolicy(
+            verify_email_limit, verify_email_window_seconds
+        ),
+        RateLimitAction.RESEND_EMAIL_VERIFICATION: RateLimitPolicy(
+            resend_email_verification_limit, resend_email_verification_window_seconds
+        ),
+        RateLimitAction.FORGOT_PASSWORD: RateLimitPolicy(
+            forgot_password_limit, forgot_password_window_seconds
+        ),
+        RateLimitAction.RESET_PASSWORD: RateLimitPolicy(
+            reset_password_limit, reset_password_window_seconds
+        ),
+        RateLimitAction.LOGIN: RateLimitPolicy(login_limit, login_window_seconds),
+        RateLimitAction.REFRESH: RateLimitPolicy(refresh_limit, refresh_window_seconds),
+        RateLimitAction.CHANGE_PASSWORD: RateLimitPolicy(
+            change_password_limit, change_password_window_seconds
+        ),
+    }
 
 
 def build_postgres_register_church(
@@ -117,13 +161,46 @@ class Container(containers.DeclarativeContainer):
     config.database_url.from_value("")
     config.auth_token_secret.from_value("development-only-token-secret-32-bytes")
     config.email_backend.from_value("memory")
+    config.rate_limit_verify_email_limit.from_value(10)
+    config.rate_limit_verify_email_window_seconds.from_value(3600)
+    config.rate_limit_resend_email_verification_limit.from_value(5)
+    config.rate_limit_resend_email_verification_window_seconds.from_value(3600)
+    config.rate_limit_forgot_password_limit.from_value(5)
+    config.rate_limit_forgot_password_window_seconds.from_value(3600)
+    config.rate_limit_reset_password_limit.from_value(10)
+    config.rate_limit_reset_password_window_seconds.from_value(3600)
+    config.rate_limit_login_limit.from_value(5)
+    config.rate_limit_login_window_seconds.from_value(60)
+    config.rate_limit_refresh_limit.from_value(20)
+    config.rate_limit_refresh_window_seconds.from_value(60)
+    config.rate_limit_change_password_limit.from_value(5)
+    config.rate_limit_change_password_window_seconds.from_value(3600)
 
     repository = providers.Singleton(InMemoryRegistrationRepository)
     unit_of_work = providers.Factory(InMemoryUnitOfWork, repository=repository)
     password_hasher = providers.Singleton(Argon2Hasher)
     id_generator = providers.Singleton(UuidGenerator)
     clock = providers.Singleton(SystemClock)
-    rate_limiter = providers.Singleton(FixedWindowRateLimiter, clock=clock)
+    rate_limit_policies = providers.Singleton(
+        build_rate_limit_policies,
+        verify_email_limit=config.rate_limit_verify_email_limit.as_int(),
+        verify_email_window_seconds=config.rate_limit_verify_email_window_seconds.as_int(),
+        resend_email_verification_limit=config.rate_limit_resend_email_verification_limit.as_int(),
+        resend_email_verification_window_seconds=config.rate_limit_resend_email_verification_window_seconds.as_int(),
+        forgot_password_limit=config.rate_limit_forgot_password_limit.as_int(),
+        forgot_password_window_seconds=config.rate_limit_forgot_password_window_seconds.as_int(),
+        reset_password_limit=config.rate_limit_reset_password_limit.as_int(),
+        reset_password_window_seconds=config.rate_limit_reset_password_window_seconds.as_int(),
+        login_limit=config.rate_limit_login_limit.as_int(),
+        login_window_seconds=config.rate_limit_login_window_seconds.as_int(),
+        refresh_limit=config.rate_limit_refresh_limit.as_int(),
+        refresh_window_seconds=config.rate_limit_refresh_window_seconds.as_int(),
+        change_password_limit=config.rate_limit_change_password_limit.as_int(),
+        change_password_window_seconds=config.rate_limit_change_password_window_seconds.as_int(),
+    )
+    in_memory_rate_limiter = providers.Singleton(
+        FixedWindowRateLimiter, clock=clock, policies=rate_limit_policies
+    )
     token_service = providers.Singleton(HmacTokenService, secret=config.auth_token_secret)
     in_memory_email_sender = providers.Singleton(InMemoryEmailSender)
     smtp_email_sender = providers.Singleton(
@@ -150,6 +227,17 @@ class Container(containers.DeclarativeContainer):
         email_sender=email_sender,
     )
     database = providers.Singleton(PostgresDatabase, database_url=config.database_url)
+    postgres_rate_limiter = providers.Singleton(
+        PostgresFixedWindowRateLimiter,
+        database=database,
+        clock=clock,
+        policies=rate_limit_policies,
+    )
+    rate_limiter = providers.Selector(
+        config.persistence_backend,
+        memory=in_memory_rate_limiter,
+        postgresql=postgres_rate_limiter,
+    )
     postgres_register_church = providers.Factory(
         build_postgres_register_church,
         database=database,

@@ -212,8 +212,14 @@ Execute a análise estática de tipos em modo estrito:
 uv run pyright
 ```
 
-Instale o hook que executa os testes unitários e exige cobertura mínima de 91% antes de cada
-commit:
+O hook executa a suíte completa e exige cobertura mínima de 91%. Como os testes E2E usam o
+PostgreSQL real, mantenha o serviço de teste ativo:
+
+```bash
+docker compose up -d postgres
+```
+
+Instale o hook antes de realizar commits:
 
 ```bash
 uv run pre-commit install

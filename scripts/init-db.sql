@@ -1,5 +1,14 @@
 BEGIN;
 
+CREATE TABLE IF NOT EXISTS rate_limits (
+    key_hash VARCHAR(64) PRIMARY KEY,
+    attempts INTEGER NOT NULL,
+    window_started_at TIMESTAMPTZ NOT NULL,
+    expires_at TIMESTAMPTZ NOT NULL
+);
+
+CREATE INDEX IF NOT EXISTS ix_rate_limits_expires_at ON rate_limits (expires_at);
+
 CREATE TABLE IF NOT EXISTS churches (
     id UUID PRIMARY KEY,
     official_name VARCHAR(150) NOT NULL,

@@ -14,7 +14,7 @@ TEST_DATABASE_URL = (
     "postgresql+asyncpg://church_manage:church_manage@localhost:5433/church_manage_test"
 )
 TABLES = (
-    "security_audit_events, consumed_refresh_tokens, sessions, password_reset_tokens, "
+    "rate_limits, security_audit_events, consumed_refresh_tokens, sessions, password_reset_tokens, "
     "email_verification_tokens, "
     "church_memberships, congregations, "
     "addresses, church_settings, users, churches"
@@ -62,6 +62,33 @@ async def api_client(postgres_engine: AsyncEngine) -> AsyncIterator[AsyncClient]
         base_url="http://test",
     ) as client:
         yield client
+
+
+@pytest_asyncio.fixture(loop_scope="session")
+async def second_api_client(postgres_engine: AsyncEngine) -> AsyncIterator[AsyncClient]:
+    assert postgres_engine is not None
+    previous_backend = os.environ.get("PERSISTENCE_BACKEND")
+    previous_database_url = os.environ.get("DATABASE_URL")
+    try:
+        os.environ["PERSISTENCE_BACKEND"] = "postgresql"
+        os.environ["DATABASE_URL"] = database_url
+        second_app = create_app()
+    finally:
+        if previous_backend is None:
+            os.environ.pop("PERSISTENCE_BACKEND")
+        else:
+            os.environ["PERSISTENCE_BACKEND"] = previous_backend
+        if previous_database_url is None:
+            os.environ.pop("DATABASE_URL")
+        else:
+            os.environ["DATABASE_URL"] = previous_database_url
+
+    async with AsyncClient(
+        transport=ASGITransport(app=second_app),
+        base_url="http://test",
+    ) as client:
+        yield client
+    await second_app.state.container.database().dispose()
 
 
 @pytest.fixture(scope="session")

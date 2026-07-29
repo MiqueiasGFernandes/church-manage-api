@@ -1,3 +1,4 @@
+import asyncio
 from typing import TypedDict
 from uuid import UUID
 
@@ -75,6 +76,30 @@ async def register_verify_and_login(
         "access_token": str(login.json()["access_token"]),
         "refresh_token": refresh_token,
     }
+
+
+async def test_concurrent_login_attempts_share_atomic_postgres_rate_limit(
+    api_client: AsyncClient,
+    second_api_client: AsyncClient,
+) -> None:
+    clients = (api_client, second_api_client)
+    responses = await asyncio.gather(
+        *(
+            clients[index % len(clients)].post(
+                "/api/v1/auth/login",
+                json={
+                    "email": "rate-limit-e2e@example.com",
+                    "password": "SenhaInvalida123",
+                },
+            )
+            for index in range(6)
+        )
+    )
+
+    assert [response.status_code for response in responses].count(401) == 5
+    limited = [response for response in responses if response.status_code == 429]
+    assert len(limited) == 1
+    assert limited[0].json()["error"]["code"] == "AUTH_RATE_LIMIT_EXCEEDED"
 
 
 def bearer(access_token: str) -> dict[str, str]:

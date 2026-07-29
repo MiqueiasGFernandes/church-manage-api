@@ -55,6 +55,46 @@ def create_app() -> FastAPI:
     container.config.smtp_password.from_value(os.getenv("SMTP_PASSWORD", ""))
     container.config.smtp_use_tls.from_value(os.getenv("SMTP_USE_TLS", "true"))
     container.config.public_app_url.from_value(os.getenv("PUBLIC_APP_URL", ""))
+    container.config.rate_limit_verify_email_limit.from_value(
+        os.getenv("RATE_LIMIT_VERIFY_EMAIL_LIMIT", "10")
+    )
+    container.config.rate_limit_verify_email_window_seconds.from_value(
+        os.getenv("RATE_LIMIT_VERIFY_EMAIL_WINDOW_SECONDS", "3600")
+    )
+    container.config.rate_limit_resend_email_verification_limit.from_value(
+        os.getenv("RATE_LIMIT_RESEND_EMAIL_VERIFICATION_LIMIT", "5")
+    )
+    container.config.rate_limit_resend_email_verification_window_seconds.from_value(
+        os.getenv("RATE_LIMIT_RESEND_EMAIL_VERIFICATION_WINDOW_SECONDS", "3600")
+    )
+    container.config.rate_limit_forgot_password_limit.from_value(
+        os.getenv("RATE_LIMIT_FORGOT_PASSWORD_LIMIT", "5")
+    )
+    container.config.rate_limit_forgot_password_window_seconds.from_value(
+        os.getenv("RATE_LIMIT_FORGOT_PASSWORD_WINDOW_SECONDS", "3600")
+    )
+    container.config.rate_limit_reset_password_limit.from_value(
+        os.getenv("RATE_LIMIT_RESET_PASSWORD_LIMIT", "10")
+    )
+    container.config.rate_limit_reset_password_window_seconds.from_value(
+        os.getenv("RATE_LIMIT_RESET_PASSWORD_WINDOW_SECONDS", "3600")
+    )
+    container.config.rate_limit_login_limit.from_value(os.getenv("RATE_LIMIT_LOGIN_LIMIT", "5"))
+    container.config.rate_limit_login_window_seconds.from_value(
+        os.getenv("RATE_LIMIT_LOGIN_WINDOW_SECONDS", "60")
+    )
+    container.config.rate_limit_refresh_limit.from_value(
+        os.getenv("RATE_LIMIT_REFRESH_LIMIT", "20")
+    )
+    container.config.rate_limit_refresh_window_seconds.from_value(
+        os.getenv("RATE_LIMIT_REFRESH_WINDOW_SECONDS", "60")
+    )
+    container.config.rate_limit_change_password_limit.from_value(
+        os.getenv("RATE_LIMIT_CHANGE_PASSWORD_LIMIT", "5")
+    )
+    container.config.rate_limit_change_password_window_seconds.from_value(
+        os.getenv("RATE_LIMIT_CHANGE_PASSWORD_WINDOW_SECONDS", "3600")
+    )
 
     @asynccontextmanager
     async def lifespan(_: FastAPI) -> AsyncGenerator[None]:

@@ -18,7 +18,7 @@ from modules.organizations.application.errors.auth import (
     RateLimitExceededError,
     SessionNotFoundError,
 )
-from modules.organizations.application.ports.auth import IRateLimiter
+from modules.organizations.application.ports.auth import IRateLimiter, RateLimitAction
 from modules.organizations.domain.use_cases.authenticate_user import IAuthenticateUser
 from modules.organizations.domain.use_cases.change_password import IChangePassword
 from modules.organizations.domain.use_cases.get_current_user import IGetCurrentUser
@@ -186,7 +186,9 @@ async def verify_email(
     use_case: IVerifyEmail = Depends(get_verify_email),
     rate_limiter: IRateLimiter = Depends(get_rate_limiter),
 ) -> Response:
-    await rate_limiter.ensure_allowed(f"verify-email:{client_address(request)}", 10, 3600)
+    await rate_limiter.ensure_allowed(
+        RateLimitAction.VERIFY_EMAIL, f"verify-email:{client_address(request)}"
+    )
     await use_case.execute(body.token)
     return Response(status_code=status.HTTP_204_NO_CONTENT)
 
@@ -199,7 +201,8 @@ async def resend_email_verification(
     rate_limiter: IRateLimiter = Depends(get_rate_limiter),
 ) -> Response:
     await rate_limiter.ensure_allowed(
-        f"resend-verification:{client_address(request)}:{body.email.strip().casefold()}", 5, 3600
+        RateLimitAction.RESEND_EMAIL_VERIFICATION,
+        f"resend-verification:{client_address(request)}:{body.email.strip().casefold()}",
     )
     await use_case.execute(body.email)
     return Response(status_code=status.HTTP_204_NO_CONTENT)
@@ -213,7 +216,8 @@ async def forgot_password(
     rate_limiter: IRateLimiter = Depends(get_rate_limiter),
 ) -> Response:
     await rate_limiter.ensure_allowed(
-        f"forgot-password:{client_address(request)}:{body.email.strip().casefold()}", 5, 3600
+        RateLimitAction.FORGOT_PASSWORD,
+        f"forgot-password:{client_address(request)}:{body.email.strip().casefold()}",
     )
     await use_case.execute(body.email)
     return Response(status_code=status.HTTP_204_NO_CONTENT)
@@ -226,7 +230,9 @@ async def reset_password(
     use_case: IResetPassword = Depends(get_reset_password),
     rate_limiter: IRateLimiter = Depends(get_rate_limiter),
 ) -> Response:
-    await rate_limiter.ensure_allowed(f"reset-password:{client_address(request)}", 10, 3600)
+    await rate_limiter.ensure_allowed(
+        RateLimitAction.RESET_PASSWORD, f"reset-password:{client_address(request)}"
+    )
     await use_case.execute(body.token, body.new_password)
     return Response(status_code=status.HTTP_204_NO_CONTENT)
 
@@ -240,7 +246,8 @@ async def login(
     rate_limiter: IRateLimiter = Depends(get_rate_limiter),
 ) -> TokenResponse:
     await rate_limiter.ensure_allowed(
-        f"login:{client_address(request)}:{body.email.strip().casefold()}", 5, 60
+        RateLimitAction.LOGIN,
+        f"login:{client_address(request)}:{body.email.strip().casefold()}",
     )
     result = await use_case.execute(body.email, body.password)
     set_refresh_cookie(response, result.refresh_token, bool(request.app.state.auth_cookie_secure))
@@ -256,7 +263,7 @@ async def refresh(
     use_case: IRefreshSession = Depends(get_refresh_session),
     rate_limiter: IRateLimiter = Depends(get_rate_limiter),
 ) -> TokenResponse:
-    await rate_limiter.ensure_allowed(f"refresh:{client_address(request)}", 20, 60)
+    await rate_limiter.ensure_allowed(RateLimitAction.REFRESH, f"refresh:{client_address(request)}")
     token = request.cookies.get("refresh_token")
     if token is None:
         from modules.organizations.application.errors.auth import InvalidRefreshTokenError
@@ -297,7 +304,8 @@ async def change_password(
     rate_limiter: IRateLimiter = Depends(get_rate_limiter),
 ) -> Response:
     await rate_limiter.ensure_allowed(
-        f"change-password:{client_address(request)}:{actor.user_id}", 5, 3600
+        RateLimitAction.CHANGE_PASSWORD,
+        f"change-password:{client_address(request)}:{actor.user_id}",
     )
     await use_case.execute(actor, body.current_password, body.new_password)
     return Response(status_code=status.HTTP_204_NO_CONTENT)

@@ -1,9 +1,9 @@
 repos:
   - repo: local
     hooks:
-      - id: unit-tests-with-coverage
-        name: Unit tests with coverage above 90%
-        entry: uv run pytest tests/unit --cov --cov-report=term-missing
+      - id: test-suite-with-coverage
+        name: Test suite with coverage above 91%
+        entry: uv run pytest --cov --cov-report=term-missing
         language: system
         pass_filenames: false
         always_run: true

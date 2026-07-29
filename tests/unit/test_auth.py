@@ -3,6 +3,8 @@ from uuid import UUID
 
 import pytest
 
+from app.container import Container
+from app.main import create_app
 from modules.organizations.application.dto.register_church import (
     RegisterAddressInput,
     RegisterAdministratorInput,
@@ -18,6 +20,11 @@ from modules.organizations.application.errors.auth import (
     InvalidPasswordResetTokenError,
     RateLimitExceededError,
     SessionRevokedError,
+)
+from modules.organizations.application.ports.auth import (
+    IRateLimiter,
+    RateLimitAction,
+    RateLimitPolicies,
 )
 from modules.organizations.application.use_cases.authenticate_user import AuthenticateUser
 from modules.organizations.application.use_cases.change_password import ChangePassword
@@ -43,7 +50,6 @@ from modules.organizations.infrastructure.in_memory import (
     InMemoryUnitOfWork,
 )
 from modules.organizations.infrastructure.security import (
-    FixedWindowRateLimiter,
     HmacTokenService,
     InMemoryEmailSender,
 )
@@ -237,14 +243,30 @@ async def test_lists_revokes_and_logs_out_all_owned_sessions(
     assert repository.audit_events[-1].event_type == "ALL_SESSIONS_REVOKED"
 
 
-async def test_rate_limiter_blocks_excessive_authentication_attempts() -> None:
-    limiter = FixedWindowRateLimiter(FixedClock())
+async def test_rate_limiter_uses_configured_limit_for_authentication_attempts() -> None:
+    container = Container()
+    container.config.rate_limit_login_limit.from_value(2)
+    container.config.rate_limit_login_window_seconds.from_value(60)
+    limiter: IRateLimiter = container.rate_limiter()
 
-    for _ in range(5):
-        await limiter.ensure_allowed("login:127.0.0.1:user@example.com", 5, 60)
+    for _ in range(2):
+        await limiter.ensure_allowed(RateLimitAction.LOGIN, "login:127.0.0.1:user@example.com")
 
     with pytest.raises(RateLimitExceededError):
-        await limiter.ensure_allowed("login:127.0.0.1:user@example.com", 5, 60)
+        await limiter.ensure_allowed(RateLimitAction.LOGIN, "login:127.0.0.1:user@example.com")
+
+
+def test_application_loads_rate_limit_policy_from_environment(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    monkeypatch.setenv("RATE_LIMIT_LOGIN_LIMIT", "7")
+    monkeypatch.setenv("RATE_LIMIT_LOGIN_WINDOW_SECONDS", "90")
+
+    application = create_app()
+    policies: RateLimitPolicies = application.state.container.rate_limit_policies()
+
+    assert policies[RateLimitAction.LOGIN].limit == 7
+    assert policies[RateLimitAction.LOGIN].window_seconds == 90
 
 
 async def test_resends_email_verification_and_invalidates_previous_token(
