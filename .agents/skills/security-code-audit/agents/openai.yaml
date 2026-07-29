@@ -1,0 +1,4 @@
+interface:
+  display_name: "Auditoria de segurança de código"
+  short_description: "Identifica vulnerabilidades e gera relatório acionável"
+  default_prompt: "Use $security-code-audit para auditar a segurança deste código e gerar um relatório Markdown priorizado."
