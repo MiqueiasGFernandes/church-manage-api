@@ -298,7 +298,7 @@ async def test_resends_email_verification_and_invalidates_previous_token(
     await verify.execute(email.verifications[-1][1])
 
 
-async def test_password_reset_is_neutral_single_use_and_revokes_sessions(
+async def test_password_reset_keeps_only_latest_token_valid_and_revokes_sessions(
     auth_flow: tuple[
         InMemoryRegistrationRepository,
         InMemoryEmailSender,
@@ -324,7 +324,12 @@ async def test_password_reset_is_neutral_single_use_and_revokes_sessions(
     await request_reset.execute("inexistente@example.com")
     assert email.password_resets == []
     await request_reset.execute("joao@igreja.com.br")
+    previous_reset_token = email.password_resets[-1][1]
+    await request_reset.execute("joao@igreja.com.br")
     reset_token = email.password_resets[-1][1]
+
+    with pytest.raises(InvalidPasswordResetTokenError):
+        await reset.execute(previous_reset_token, "TokenAnteriorNaoPodeFuncionar123")
     await reset.execute(reset_token, "NovaSenhaSegura123")
 
     with pytest.raises(InvalidPasswordResetTokenError):

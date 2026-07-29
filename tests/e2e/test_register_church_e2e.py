@@ -170,6 +170,17 @@ async def test_registers_complete_church_through_http(
     reset_requested = await api_client.post(
         "/api/v1/auth/forgot-password", json={"email": "joao@igreja.com.br"}
     )
+    previous_reset_token = email_sender.password_resets[-1][1]
+    latest_reset_requested = await api_client.post(
+        "/api/v1/auth/forgot-password", json={"email": "joao@igreja.com.br"}
+    )
+    previous_token_reset = await api_client.post(
+        "/api/v1/auth/reset-password",
+        json={
+            "token": previous_reset_token,
+            "new_password": "TokenAnteriorNaoPodeFuncionar123",
+        },
+    )
     password_reset = await api_client.post(
         "/api/v1/auth/reset-password",
         json={
@@ -183,6 +194,8 @@ async def test_registers_complete_church_through_http(
     )
 
     assert reset_requested.status_code == 204
+    assert latest_reset_requested.status_code == 204
+    assert previous_token_reset.status_code == 401
     assert password_reset.status_code == 204
     assert new_login.status_code == 200
 

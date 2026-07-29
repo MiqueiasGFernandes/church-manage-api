@@ -35,6 +35,7 @@ class RequestPasswordReset(IRequestPasswordReset):
         async with self._unit_of_work:
             user = await self._repository.find_user_by_email(normalized)
             if user is not None and user.status is UserStatus.ACTIVE:
+                await self._repository.invalidate_password_resets(user.id.value, now)
                 token = self._tokens.generate_opaque()
                 await self._repository.add_password_reset(
                     user.id.value,

@@ -155,6 +155,11 @@ class InMemoryRegistrationRepository(IRegistrationRepository):
     ) -> None:
         self.password_resets.append(PasswordResetRecord(user_id, token_hash, expires_at))
 
+    async def invalidate_password_resets(self, user_id: UUID, invalidated_at: datetime) -> None:
+        for record in self.password_resets:
+            if record.user_id == user_id and record.used_at is None:
+                record.used_at = invalidated_at
+
     async def find_password_reset(self, token_hash: str) -> PasswordResetRecord | None:
         return next((item for item in self.password_resets if item.token_hash == token_hash), None)
 

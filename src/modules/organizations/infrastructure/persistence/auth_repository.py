@@ -233,6 +233,18 @@ class SqlAlchemyAuthRepository:
             )
         )
 
+    async def invalidate_password_resets(self, user_id: UUID, invalidated_at: datetime) -> None:
+        models = (
+            await self._session.scalars(
+                select(PasswordResetTokenModel).where(
+                    PasswordResetTokenModel.user_id == user_id,
+                    PasswordResetTokenModel.used_at.is_(None),
+                )
+            )
+        ).all()
+        for model in models:
+            model.used_at = invalidated_at
+
     async def _find_password_reset_model(self, token_hash: str) -> PasswordResetTokenModel | None:
         return await self._session.scalar(
             select(PasswordResetTokenModel).where(PasswordResetTokenModel.token_hash == token_hash)
