@@ -140,6 +140,32 @@ uv run uvicorn --app-dir src app.main:app --reload
 
 A API ficará disponível em `http://localhost:8000`.
 
+### Imagem Docker da API
+
+Construa a imagem multi-stage, com dependências de produção fixadas pelo `uv.lock`:
+
+```bash
+docker build -t church-manage-api .
+```
+
+Execute localmente usando as variáveis exportadas ou um arquivo `.env` criado a
+partir do `.env.example`:
+
+```bash
+docker run --rm -p 8000:8000 --env-file .env church-manage-api
+```
+
+O estágio final usa Python 3.12 slim, contém somente o virtualenv de produção e
+`src/`, e executa o Uvicorn como usuário não-root `10001:10001`. As versões do
+Python e do `uv` podem ser alteradas conscientemente durante o build:
+
+```bash
+docker build \
+  --build-arg PYTHON_VERSION=3.12 \
+  --build-arg UV_VERSION=0.11.32 \
+  -t church-manage-api .
+```
+
 ## Banco de dados
 
 Suba o PostgreSQL local de testes:
