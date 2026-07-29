@@ -17,6 +17,8 @@ def valid_production_environment() -> dict[str, str]:
         "SMTP_SENDER": "no-reply@example.com",
         "SMTP_USE_TLS": "true",
         "PUBLIC_APP_URL": "https://app.example.com",
+        "CORS_ALLOWED_ORIGINS": "https://app.example.com",
+        "CORS_ALLOW_CREDENTIALS": "true",
     }
 
 
@@ -38,6 +40,8 @@ def configure_environment(monkeypatch: pytest.MonkeyPatch, values: Mapping[str, 
         ("SMTP_SENDER", ""),
         ("SMTP_USE_TLS", "false"),
         ("PUBLIC_APP_URL", "http://app.example.com"),
+        ("CORS_ALLOWED_ORIGINS", "http://app.example.com"),
+        ("CORS_ALLOW_CREDENTIALS", "false"),
     ],
 )
 def test_rejects_insecure_production_configuration(

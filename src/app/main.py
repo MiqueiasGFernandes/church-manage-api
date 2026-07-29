@@ -4,9 +4,16 @@ from collections.abc import AsyncGenerator
 from contextlib import asynccontextmanager
 
 from fastapi import FastAPI
+from fastapi.middleware.cors import CORSMiddleware
 
 from app.container import Container
-from app.settings import AppEnvironment, ProductionSecuritySettings, parse_environment
+from app.settings import (
+    AppEnvironment,
+    CorsSettings,
+    ProductionSecuritySettings,
+    parse_boolean,
+    parse_environment,
+)
 from modules.organizations.application.errors.auth import AuthenticationError
 from modules.organizations.domain.use_cases.register_church import IRegisterChurch
 from modules.organizations.presentation.auth_http import (
@@ -52,6 +59,14 @@ def create_app() -> FastAPI:
     smtp_sender = os.getenv("SMTP_SENDER", "")
     smtp_use_tls = os.getenv("SMTP_USE_TLS", "true").lower() == "true"
     public_app_url = os.getenv("PUBLIC_APP_URL", "")
+    cors_settings = CorsSettings.from_strings(
+        origins=os.getenv("CORS_ALLOWED_ORIGINS", "http://localhost:3000"),
+        methods=os.getenv("CORS_ALLOWED_METHODS", "GET,POST,DELETE,OPTIONS"),
+        headers=os.getenv("CORS_ALLOWED_HEADERS", "Authorization,Content-Type"),
+        allow_credentials=parse_boolean(
+            os.getenv("CORS_ALLOW_CREDENTIALS", "true"), "CORS_ALLOW_CREDENTIALS"
+        ),
+    )
     if environment is AppEnvironment.PRODUCTION:
         ProductionSecuritySettings(
             persistence_backend=persistence_backend,
@@ -63,6 +78,8 @@ def create_app() -> FastAPI:
             smtp_sender=smtp_sender,
             smtp_use_tls=smtp_use_tls,
             public_app_url=public_app_url,
+            cors_allowed_origins=cors_settings.allowed_origins,
+            cors_allow_credentials=cors_settings.allow_credentials,
         ).validate()
     container.config.persistence_backend.from_value(persistence_backend)
     container.config.database_url.from_value(database_url)
@@ -178,7 +195,15 @@ def create_app() -> FastAPI:
 
     application = FastAPI(title="Church Manage API", version="0.1.0", lifespan=lifespan)
     application.state.auth_cookie_secure = auth_cookie_secure
+    application.state.cors_allowed_origins = cors_settings.allowed_origins
     application.state.container = container
+    application.add_middleware(
+        CORSMiddleware,
+        allow_origins=list(cors_settings.allowed_origins),
+        allow_credentials=cors_settings.allow_credentials,
+        allow_methods=list(cors_settings.allowed_methods),
+        allow_headers=list(cors_settings.allowed_headers),
+    )
     application.include_router(router)
     application.include_router(auth_router)
     application.include_router(church_router)

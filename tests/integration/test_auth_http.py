@@ -1,6 +1,7 @@
 from datetime import UTC, datetime
 from uuid import UUID
 
+import pytest
 from httpx import ASGITransport, AsyncClient
 
 from app.main import create_app
@@ -86,6 +87,40 @@ def registration_payload() -> dict[str, object]:
         },
         "terms_accepted": True,
     }
+
+
+async def test_cors_allows_configured_origin_and_rejects_untrusted_refresh_origin(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    monkeypatch.setenv("CORS_ALLOWED_ORIGINS", "https://app.example.com")
+    application = create_app()
+
+    async with AsyncClient(
+        transport=ASGITransport(app=application), base_url="http://test"
+    ) as client:
+        preflight = await client.options(
+            "/api/v1/auth/refresh",
+            headers={
+                "Origin": "https://app.example.com",
+                "Access-Control-Request-Method": "POST",
+            },
+        )
+        rejected = await client.post(
+            "/api/v1/auth/refresh", headers={"Origin": "https://evil.example.com"}
+        )
+        allowed_without_cookie = await client.post(
+            "/api/v1/auth/refresh", headers={"Origin": "https://app.example.com"}
+        )
+
+    assert preflight.status_code == 200
+    assert preflight.headers["access-control-allow-origin"] == "https://app.example.com"
+    assert preflight.headers["access-control-allow-credentials"] == "true"
+    assert rejected.status_code == 403
+    assert rejected.json()["error"]["code"] == "AUTH_PERMISSION_DENIED"
+    assert allowed_without_cookie.status_code == 401
+    assert (
+        allowed_without_cookie.headers["access-control-allow-origin"] == "https://app.example.com"
+    )
 
 
 async def test_registration_verification_login_authorization_refresh_and_logout() -> None:

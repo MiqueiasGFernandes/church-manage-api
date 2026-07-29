@@ -134,7 +134,10 @@ paths:
       tags: [Authentication]
       operationId: refreshSession
       summary: Rotaciona o refresh token
-      description: Reutilizar um refresh token já consumido revoga a sessão associada.
+      description: |
+        Reutilizar um refresh token já consumido revoga a sessão associada.
+        Requisições de navegador com `Origin` são aceitas somente quando a origem
+        pertence à allowlist CORS configurada pela aplicação.
       security:
         - RefreshCookie: []
       responses:
@@ -145,6 +148,8 @@ paths:
               schema:
                 $ref: '#/components/schemas/AccessTokenResponse'
         '401':
+          $ref: '#/components/responses/AuthenticationError'
+        '403':
           $ref: '#/components/responses/AuthenticationError'
         '429':
           $ref: '#/components/responses/AuthenticationError'

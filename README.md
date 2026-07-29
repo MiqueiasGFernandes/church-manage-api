@@ -113,10 +113,15 @@ export DATABASE_URL=postgresql+asyncpg://church_manage:church_manage@localhost:5
 | `SMTP_USERNAME` / `SMTP_PASSWORD` | vazio | Credenciais SMTP, quando exigidas. |
 | `SMTP_USE_TLS` | `true` | Ativa STARTTLS no SMTP. |
 | `PUBLIC_APP_URL` | vazio | URL do frontend usada no link de confirmação. |
+| `CORS_ALLOWED_ORIGINS` | `http://localhost:3000` | Origens exatas separadas por vírgula; não aceita caminhos nem wildcard com credenciais. |
+| `CORS_ALLOWED_METHODS` | `GET,POST,DELETE,OPTIONS` | Métodos permitidos em requisições CORS, separados por vírgula. |
+| `CORS_ALLOWED_HEADERS` | `Authorization,Content-Type` | Headers aceitos no preflight CORS, separados por vírgula. |
+| `CORS_ALLOW_CREDENTIALS` | `true` | Permite cookies para origens da allowlist. Deve permanecer `true` em produção para o refresh token. |
 
 Com `APP_ENV=production`, a aplicação interrompe a inicialização se PostgreSQL e
 `DATABASE_URL`, segredo HMAC seguro, cookie `Secure`, SMTP com TLS ou
-`PUBLIC_APP_URL` HTTPS não estiverem configurados. Gere um segredo compatível com:
+`PUBLIC_APP_URL` HTTPS não estiverem configurados. A allowlist CORS também deve
+conter a origem HTTPS de `PUBLIC_APP_URL`, sem wildcard. Gere um segredo compatível com:
 
 ```bash
 python -c "import secrets; print(secrets.token_urlsafe(32))"

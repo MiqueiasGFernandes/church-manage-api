@@ -263,6 +263,9 @@ async def refresh(
     use_case: IRefreshSession = Depends(get_refresh_session),
     rate_limiter: IRateLimiter = Depends(get_rate_limiter),
 ) -> TokenResponse:
+    origin = request.headers.get("origin")
+    if origin is not None and origin not in request.app.state.cors_allowed_origins:
+        raise PermissionDeniedError("Origem não permitida para renovação da sessão.")
     await rate_limiter.ensure_allowed(RateLimitAction.REFRESH, f"refresh:{client_address(request)}")
     token = request.cookies.get("refresh_token")
     if token is None:
