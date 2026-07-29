@@ -23,6 +23,7 @@ class IEmailSender(Protocol):
 
 
 class RateLimitAction(StrEnum):
+    REGISTER_CHURCH = "register_church"
     VERIFY_EMAIL = "verify_email"
     RESEND_EMAIL_VERIFICATION = "resend_email_verification"
     FORGOT_PASSWORD = "forgot_password"

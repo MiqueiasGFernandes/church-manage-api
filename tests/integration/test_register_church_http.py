@@ -8,7 +8,7 @@ from sqlalchemy import text
 from sqlalchemy.ext.asyncio import create_async_engine
 
 from app.container import Container
-from app.main import app
+from app.main import app, create_app
 from modules.organizations.application.use_cases.register_church import RegisterChurch
 
 
@@ -131,3 +131,21 @@ async def test_returns_422_for_unknown_field() -> None:
         response = await client.post("/api/v1/churches", json=request_payload)
 
     assert response.status_code == 422
+
+
+async def test_returns_429_when_public_registration_limit_is_exceeded(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    monkeypatch.setenv("RATE_LIMIT_REGISTER_CHURCH_LIMIT", "1")
+    monkeypatch.setenv("RATE_LIMIT_REGISTER_CHURCH_WINDOW_SECONDS", "3600")
+    application = create_app()
+
+    async with AsyncClient(
+        transport=ASGITransport(app=application), base_url="http://test"
+    ) as client:
+        first_response = await client.post("/api/v1/churches", json=payload())
+        limited_response = await client.post("/api/v1/churches", json=payload())
+
+    assert first_response.status_code == 201
+    assert limited_response.status_code == 429
+    assert limited_response.json()["error"]["code"] == "AUTH_RATE_LIMIT_EXCEEDED"

@@ -294,7 +294,7 @@ paths:
         o vínculo administrativo e as configurações iniciais em uma transação.
 
         A igreja e o administrador são criados com verificação de e-mail
-        pendente. O endpoint é público e não é idempotente.
+        pendente. O endpoint é público, protegido por rate limiting e não é idempotente.
       security: []
       requestBody:
         required: true
@@ -405,6 +405,8 @@ paths:
                       fields:
                         slug:
                           - O slug informado possui formato inválido.
+        '429':
+          $ref: '#/components/responses/AuthenticationError'
 
 components:
   securitySchemes:

@@ -55,6 +55,12 @@ def create_app() -> FastAPI:
     container.config.smtp_password.from_value(os.getenv("SMTP_PASSWORD", ""))
     container.config.smtp_use_tls.from_value(os.getenv("SMTP_USE_TLS", "true"))
     container.config.public_app_url.from_value(os.getenv("PUBLIC_APP_URL", ""))
+    container.config.rate_limit_register_church_limit.from_value(
+        os.getenv("RATE_LIMIT_REGISTER_CHURCH_LIMIT", "5")
+    )
+    container.config.rate_limit_register_church_window_seconds.from_value(
+        os.getenv("RATE_LIMIT_REGISTER_CHURCH_WINDOW_SECONDS", "3600")
+    )
     container.config.rate_limit_verify_email_limit.from_value(
         os.getenv("RATE_LIMIT_VERIFY_EMAIL_LIMIT", "10")
     )

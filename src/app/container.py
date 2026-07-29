@@ -53,6 +53,8 @@ def parse_bool(value: str) -> bool:
 
 
 def build_rate_limit_policies(
+    register_church_limit: int,
+    register_church_window_seconds: int,
     verify_email_limit: int,
     verify_email_window_seconds: int,
     resend_email_verification_limit: int,
@@ -69,6 +71,9 @@ def build_rate_limit_policies(
     change_password_window_seconds: int,
 ) -> dict[RateLimitAction, RateLimitPolicy]:
     return {
+        RateLimitAction.REGISTER_CHURCH: RateLimitPolicy(
+            register_church_limit, register_church_window_seconds
+        ),
         RateLimitAction.VERIFY_EMAIL: RateLimitPolicy(
             verify_email_limit, verify_email_window_seconds
         ),
@@ -161,6 +166,8 @@ class Container(containers.DeclarativeContainer):
     config.database_url.from_value("")
     config.auth_token_secret.from_value("development-only-token-secret-32-bytes")
     config.email_backend.from_value("memory")
+    config.rate_limit_register_church_limit.from_value(5)
+    config.rate_limit_register_church_window_seconds.from_value(3600)
     config.rate_limit_verify_email_limit.from_value(10)
     config.rate_limit_verify_email_window_seconds.from_value(3600)
     config.rate_limit_resend_email_verification_limit.from_value(5)
@@ -183,6 +190,8 @@ class Container(containers.DeclarativeContainer):
     clock = providers.Singleton(SystemClock)
     rate_limit_policies = providers.Singleton(
         build_rate_limit_policies,
+        register_church_limit=config.rate_limit_register_church_limit.as_int(),
+        register_church_window_seconds=config.rate_limit_register_church_window_seconds.as_int(),
         verify_email_limit=config.rate_limit_verify_email_limit.as_int(),
         verify_email_window_seconds=config.rate_limit_verify_email_window_seconds.as_int(),
         resend_email_verification_limit=config.rate_limit_resend_email_verification_limit.as_int(),
