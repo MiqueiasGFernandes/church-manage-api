@@ -2,6 +2,7 @@ import base64
 import hashlib
 import hmac
 import json
+import logging
 import secrets
 import smtplib
 from asyncio import to_thread
@@ -16,6 +17,8 @@ from modules.organizations.application.ports.auth import (
     RateLimitPolicies,
 )
 from modules.organizations.application.ports.registration_services import IClock
+
+logger = logging.getLogger(f"church_manage.{__name__}")
 
 
 class HmacTokenService:
@@ -106,6 +109,14 @@ class FixedWindowRateLimiter(IRateLimiter):
         cutoff = self._clock.now() - timedelta(seconds=policy.window_seconds)
         attempts = [instant for instant in self._attempts.get(key, []) if instant > cutoff]
         if len(attempts) >= policy.limit:
+            logger.warning(
+                "rate_limit_exceeded",
+                extra={
+                    "operation": "enforce_rate_limit",
+                    "rate_limit_action": action.value,
+                    "action": "Wait for the configured rate-limit window before retrying.",
+                },
+            )
             raise RateLimitExceededError(
                 "Limite de tentativas excedido. Tente novamente mais tarde."
             )
@@ -141,7 +152,7 @@ class SmtpEmailSender:
         message.set_content(
             f"Confirme seu e-mail acessando: {self._public_url}/verify-email?token={token}"
         )
-        await to_thread(self._send, message)
+        await to_thread(self._send, message, "email_verification")
 
     async def send_password_reset(self, email: str, token: str) -> None:
         message = EmailMessage()
@@ -150,12 +161,24 @@ class SmtpEmailSender:
         message.set_content(
             f"Redefina sua senha acessando: {self._public_url}/reset-password?token={token}"
         )
-        await to_thread(self._send, message)
+        await to_thread(self._send, message, "password_reset")
 
-    def _send(self, message: EmailMessage) -> None:
-        with smtplib.SMTP(self._host, self._port, timeout=10) as client:
-            if self._use_tls:
-                client.starttls()
-            if self._username:
-                client.login(self._username, self._password)
-            client.send_message(message)
+    def _send(self, message: EmailMessage, email_type: str) -> None:
+        try:
+            with smtplib.SMTP(self._host, self._port, timeout=10) as client:
+                if self._use_tls:
+                    client.starttls()
+                if self._username:
+                    client.login(self._username, self._password)
+                client.send_message(message)
+        except (OSError, smtplib.SMTPException):
+            logger.error(
+                "smtp_email_delivery_failed",
+                extra={
+                    "operation": "send_email",
+                    "email_type": email_type,
+                    "smtp_tls_enabled": self._use_tls,
+                    "action": "Check SMTP availability and credentials, then retry delivery.",
+                },
+            )
+            raise

@@ -104,6 +104,7 @@ export DATABASE_URL=postgresql+asyncpg://church_manage:church_manage@localhost:5
 | Variável | Valor padrão | Descrição |
 |---|---|---|
 | `APP_ENV` | `development` | Ambiente explícito: `development`, `test` ou `production`. Produção ativa validação fail-fast de segurança. |
+| `LOG_LEVEL` | `INFO` | Nível mínimo dos logs JSON: `DEBUG`, `INFO`, `WARNING`, `ERROR` ou `CRITICAL`. |
 | `PERSISTENCE_BACKEND` | `memory` | Use `postgresql` para ativar o repository SQLAlchemy. |
 | `DATABASE_URL` | vazio | URL assíncrona no formato `postgresql+asyncpg://...`. |
 | `AUTH_TOKEN_SECRET` | aleatório por processo | Segredo HMAC Base64 URL-safe. Em produção deve ser explícito, estável, diverso e representar ao menos 32 bytes. |
