@@ -352,7 +352,23 @@ arquivos separados. Em especial:
 
 Não concentre DTOs, portas e implementação do caso de uso em um único arquivo.
 A separação deve representar responsabilidades reais e evitar arquivos
-demasiadamente grandes, sem criar um arquivo por classe de forma mecânica.
+demasiadamente grandes.
+
+Cada caso de uso deve possuir obrigatoriamente seu próprio arquivo em
+`application/use_cases/`, com nome em `snake_case` correspondente à intenção.
+Por exemplo:
+
+```text
+application/use_cases/authenticate_user.py
+application/use_cases/refresh_session.py
+application/use_cases/logout_session.py
+```
+
+Não agrupe múltiplos casos de uso em módulos genéricos por assunto, como
+`auth.py`, `users.py`, `members.py` ou `services.py`. Políticas e regras
+compartilhadas podem ser extraídas para módulos próprios quando representarem
+um conceito reutilizável real, sem transformar esses módulos em coleções de
+casos de uso.
 
 ## 5.2 Nomenclatura das interfaces
 
@@ -363,6 +379,53 @@ de uso, repositories, gateways, serviços e demais portas. Exemplos:
 O nome do arquivo não deve usar o prefixo `i_`; deve acompanhar o conceito, como
 `domain/use_cases/register_church.py` ou
 `application/repositories/registration_repository.py`.
+
+## 5.3 Contratos dos casos de uso e DIP
+
+Cada implementação em `application/use_cases/<caso_de_uso>.py` deve possuir uma
+interface de entrada correspondente, definida como `Protocol` em
+`domain/use_cases/<caso_de_uso>.py`.
+
+Exemplo:
+
+```text
+domain/use_cases/authenticate_user.py
+    IAuthenticateUser
+
+application/use_cases/authenticate_user.py
+    AuthenticateUser
+```
+
+O contrato deve expor a mesma operação pública da implementação, com parâmetros
+e retorno integralmente tipados. Seus tipos não podem introduzir dependências de
+framework, infraestrutura ou apresentação no domínio.
+
+Controllers, handlers, routers e demais consumidores externos devem depender da
+interface `I<NomeDoCasoDeUso>`, nunca da implementação concreta. A implementação
+concreta deve ser referenciada apenas no Composition Root e nos testes unitários
+que exercitam diretamente o caso de uso.
+
+Toda classe concreta de caso de uso deve implementar explicitamente sua
+interface de domínio por herança, além de preservar integralmente a assinatura
+do contrato. A conformidade deve ser verificada pelo Pyright.
+
+Exemplo:
+
+```python
+class AuthenticateUser(IAuthenticateUser):
+    async def execute(self, email: str, password: str) -> TokenPair:
+        ...
+```
+
+Não depender somente da conformidade estrutural implícita do `Protocol`. A
+implementação explícita torna o contrato arquitetural visível no código.
+
+O container do Dependency Injector deve associar a interface à implementação
+concreta e fornecer o contrato à camada de apresentação.
+
+Não criar módulos agregadores ou arquivos-barrel que reexportem vários casos de
+uso e restaurem o acoplamento removido. Cada consumidor deve importar o contrato
+ou a implementação diretamente do módulo da intenção utilizada.
 
 ---
 

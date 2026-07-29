@@ -10,8 +10,279 @@ info:
 tags:
   - name: Churches
     description: Cadastro e gerenciamento de igrejas.
+  - name: Authentication
+    description: Verificação de e-mail e gerenciamento de sessões.
+  - name: Authorization
+    description: Contexto autenticado e autorização no escopo da igreja.
 
 paths:
+  /api/v1/auth/verify-email:
+    post:
+      tags: [Authentication]
+      operationId: verifyEmail
+      summary: Confirma o endereço de e-mail
+      security: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/VerifyEmailRequest'
+      responses:
+        '204':
+          description: E-mail confirmado e vínculos iniciais ativados.
+        '401':
+          $ref: '#/components/responses/AuthenticationError'
+        '429':
+          $ref: '#/components/responses/AuthenticationError'
+
+  /api/v1/auth/verify-email/resend:
+    post:
+      tags: [Authentication]
+      operationId: resendEmailVerification
+      summary: Solicita novo e-mail de confirmação
+      description: A resposta é neutra e não revela se a conta existe. Tokens anteriores são invalidados.
+      security: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/EmailRequest'
+      responses:
+        '204':
+          description: Solicitação processada.
+        '429':
+          $ref: '#/components/responses/AuthenticationError'
+
+  /api/v1/auth/forgot-password:
+    post:
+      tags: [Authentication]
+      operationId: requestPasswordReset
+      summary: Solicita recuperação de senha
+      description: A resposta é neutra e não revela se a conta existe.
+      security: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/EmailRequest'
+      responses:
+        '204':
+          description: Solicitação processada.
+        '429':
+          $ref: '#/components/responses/AuthenticationError'
+
+  /api/v1/auth/reset-password:
+    post:
+      tags: [Authentication]
+      operationId: resetPassword
+      summary: Redefine a senha usando token de uso único
+      description: O sucesso revoga todas as sessões existentes do usuário.
+      security: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ResetPasswordRequest'
+      responses:
+        '204':
+          description: Senha redefinida e sessões revogadas.
+        '401':
+          $ref: '#/components/responses/AuthenticationError'
+        '422':
+          $ref: '#/components/responses/AuthenticationError'
+        '429':
+          $ref: '#/components/responses/AuthenticationError'
+
+  /api/v1/auth/login:
+    post:
+      tags: [Authentication]
+      operationId: login
+      summary: Cria uma sessão autenticada
+      description: Exige e-mail verificado. O refresh token é entregue somente em cookie HttpOnly.
+      security: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/LoginRequest'
+      responses:
+        '200':
+          description: Sessão criada.
+          headers:
+            Set-Cookie:
+              description: Refresh token opaco em cookie HttpOnly, SameSite=Lax, Secure em produção e escopo `/api/v1/auth`.
+              schema:
+                type: string
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AccessTokenResponse'
+        '401':
+          $ref: '#/components/responses/AuthenticationError'
+        '403':
+          $ref: '#/components/responses/AuthenticationError'
+        '429':
+          $ref: '#/components/responses/AuthenticationError'
+
+  /api/v1/auth/refresh:
+    post:
+      tags: [Authentication]
+      operationId: refreshSession
+      summary: Rotaciona o refresh token
+      description: Reutilizar um refresh token já consumido revoga a sessão associada.
+      security:
+        - RefreshCookie: []
+      responses:
+        '200':
+          description: Novo par de tokens emitido; o refresh token anterior deixa de ser válido.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AccessTokenResponse'
+        '401':
+          $ref: '#/components/responses/AuthenticationError'
+        '429':
+          $ref: '#/components/responses/AuthenticationError'
+
+  /api/v1/auth/logout:
+    post:
+      tags: [Authentication]
+      operationId: logout
+      summary: Revoga a sessão atual
+      security:
+        - BearerAuth: []
+      responses:
+        '204':
+          description: Sessão revogada e cookie removido.
+        '401':
+          $ref: '#/components/responses/AuthenticationError'
+
+  /api/v1/auth/logout-all:
+    post:
+      tags: [Authentication]
+      operationId: logoutAllSessions
+      summary: Revoga todas as sessões do usuário
+      security:
+        - BearerAuth: []
+      responses:
+        '204':
+          description: Todas as sessões foram revogadas e o cookie atual foi removido.
+        '401':
+          $ref: '#/components/responses/AuthenticationError'
+
+  /api/v1/auth/sessions:
+    get:
+      tags: [Authentication]
+      operationId: listUserSessions
+      summary: Lista as sessões ativas do usuário
+      security:
+        - BearerAuth: []
+      responses:
+        '200':
+          description: Sessões ativas e não expiradas.
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/UserSessionResponse'
+        '401':
+          $ref: '#/components/responses/AuthenticationError'
+
+  /api/v1/auth/sessions/{session_id}:
+    delete:
+      tags: [Authentication]
+      operationId: revokeUserSession
+      summary: Revoga uma sessão pertencente ao usuário
+      security:
+        - BearerAuth: []
+      parameters:
+        - name: session_id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        '204':
+          description: Sessão revogada.
+        '401':
+          $ref: '#/components/responses/AuthenticationError'
+        '404':
+          $ref: '#/components/responses/AuthenticationError'
+
+  /api/v1/auth/me:
+    get:
+      tags: [Authorization]
+      operationId: getCurrentUser
+      summary: Retorna a identidade e os acessos ativos
+      security:
+        - BearerAuth: []
+      responses:
+        '200':
+          description: Identidade autenticada e acessos segregados por igreja.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CurrentUserResponse'
+        '401':
+          $ref: '#/components/responses/AuthenticationError'
+
+  /api/v1/auth/change-password:
+    post:
+      tags: [Authentication]
+      operationId: changePassword
+      summary: Altera a senha do usuário autenticado
+      description: Exige a senha atual e revoga as demais sessões do usuário.
+      security:
+        - BearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ChangePasswordRequest'
+      responses:
+        '204':
+          description: Senha alterada e demais sessões revogadas.
+        '401':
+          $ref: '#/components/responses/AuthenticationError'
+        '422':
+          $ref: '#/components/responses/AuthenticationError'
+        '429':
+          $ref: '#/components/responses/AuthenticationError'
+
+  /api/v1/churches/{church_id}/me:
+    get:
+      tags: [Authorization]
+      operationId: getCurrentUserInChurch
+      summary: Retorna o contexto autorizado em uma igreja
+      security:
+        - BearerAuth: []
+      parameters:
+        - name: church_id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        '200':
+          description: Contexto autorizado com a permissão `church:read`.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CurrentUserResponse'
+        '401':
+          $ref: '#/components/responses/AuthenticationError'
+        '403':
+          $ref: '#/components/responses/AuthenticationError'
+
   /api/v1/churches:
     post:
       tags:
@@ -56,8 +327,8 @@ paths:
                     name: João da Silva
                     email: joao@igreja.com.br
                     phone: '+5511999999999'
-                    password: Senha123
-                    password_confirmation: Senha123
+                    password: SenhaSegura123
+                    password_confirmation: SenhaSegura123
                   terms_accepted: true
       responses:
         '201':
@@ -136,7 +407,187 @@ paths:
                           - O slug informado possui formato inválido.
 
 components:
+  securitySchemes:
+    BearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+    RefreshCookie:
+      type: apiKey
+      in: cookie
+      name: refresh_token
+
+  responses:
+    AuthenticationError:
+      description: Falha de autenticação ou autorização.
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/AuthenticationErrorResponse'
+
   schemas:
+    VerifyEmailRequest:
+      type: object
+      additionalProperties: false
+      required: [token]
+      properties:
+        token:
+          type: string
+          minLength: 32
+          description: Token opaco, de uso único e com validade de 24 horas.
+
+    LoginRequest:
+      type: object
+      additionalProperties: false
+      required: [email, password]
+      properties:
+        email:
+          type: string
+          format: email
+          maxLength: 254
+        password:
+          type: string
+          format: password
+          minLength: 1
+          writeOnly: true
+
+    EmailRequest:
+      type: object
+      additionalProperties: false
+      required: [email]
+      properties:
+        email:
+          type: string
+          format: email
+          maxLength: 254
+
+    ResetPasswordRequest:
+      type: object
+      additionalProperties: false
+      required: [token, new_password]
+      properties:
+        token:
+          type: string
+          minLength: 32
+        new_password:
+          type: string
+          format: password
+          minLength: 10
+          writeOnly: true
+
+    ChangePasswordRequest:
+      type: object
+      additionalProperties: false
+      required: [current_password, new_password]
+      properties:
+        current_password:
+          type: string
+          format: password
+          minLength: 1
+          writeOnly: true
+        new_password:
+          type: string
+          format: password
+          minLength: 10
+          writeOnly: true
+
+    AccessTokenResponse:
+      type: object
+      additionalProperties: false
+      required: [access_token, token_type, expires_in]
+      properties:
+        access_token:
+          type: string
+          description: JWT assinado com validade padrão de 15 minutos.
+        token_type:
+          type: string
+          const: Bearer
+        expires_in:
+          type: integer
+          const: 900
+
+    UserSessionResponse:
+      type: object
+      additionalProperties: false
+      required: [session_id, created_at, expires_at, current]
+      properties:
+        session_id:
+          type: string
+          format: uuid
+        created_at:
+          type: string
+          format: date-time
+        expires_at:
+          type: string
+          format: date-time
+        current:
+          type: boolean
+
+    CurrentUserResponse:
+      type: object
+      additionalProperties: false
+      required: [user_id, name, email, churches]
+      properties:
+        user_id:
+          type: string
+          format: uuid
+        name:
+          type: string
+        email:
+          type: string
+          format: email
+        churches:
+          type: array
+          items:
+            $ref: '#/components/schemas/ChurchAccessResponse'
+
+    ChurchAccessResponse:
+      type: object
+      additionalProperties: false
+      required: [church_id, role, permissions]
+      properties:
+        church_id:
+          type: string
+          format: uuid
+        role:
+          type: string
+          enum: [church_owner, church_admin, pastor, secretary, treasurer, leader, member]
+        permissions:
+          type: array
+          uniqueItems: true
+          items:
+            type: string
+            pattern: '^[a-z_]+:[a-z_]+$'
+
+    AuthenticationErrorResponse:
+      type: object
+      additionalProperties: false
+      required: [error]
+      properties:
+        error:
+          type: object
+          additionalProperties: false
+          required: [code, message]
+          properties:
+            code:
+              type: string
+              enum:
+                - AUTH_EMAIL_VERIFICATION_TOKEN_INVALID
+                - AUTH_INVALID_CREDENTIALS
+                - AUTH_EMAIL_NOT_VERIFIED
+                - AUTH_ACCESS_TOKEN_INVALID
+                - AUTH_REFRESH_TOKEN_INVALID
+                - AUTH_SESSION_REVOKED
+                - AUTH_PERMISSION_DENIED
+                - AUTH_CHURCH_ACCESS_DENIED
+                - AUTH_SESSION_NOT_FOUND
+                - AUTH_RATE_LIMIT_EXCEEDED
+                - AUTH_PASSWORD_RESET_TOKEN_INVALID
+                - AUTH_PASSWORD_INVALID
+            message:
+              type: string
+              minLength: 1
+
     RegisterChurchRequest:
       type: object
       additionalProperties: false
@@ -292,17 +743,17 @@ components:
         password:
           type: string
           format: password
-          minLength: 8
+          minLength: 10
           writeOnly: true
-          description: Senha contendo pelo menos uma letra e um algarismo.
-          example: Senha123
+          description: Senha com ao menos 10 caracteres e diferente do e-mail.
+          example: SenhaSegura123
         password_confirmation:
           type: string
           format: password
-          minLength: 8
+          minLength: 10
           writeOnly: true
           description: Repetição exata do campo `password`.
-          example: Senha123
+          example: SenhaSegura123
 
     RegisterChurchResponse:
       type: object

@@ -1,5 +1,8 @@
+from datetime import datetime
 from typing import Protocol
+from uuid import UUID
 
+from modules.organizations.application.repositories.auth_repository import SecurityAuditEvent
 from modules.organizations.domain.model import (
     CNPJ,
     Church,
@@ -21,3 +24,7 @@ class IRegistrationRepository(Protocol):
     async def add_congregation(self, congregation: Congregation) -> None: ...
     async def add_membership(self, membership: ChurchMembership) -> None: ...
     async def add_settings(self, settings: ChurchSettings) -> None: ...
+    async def add_email_verification(
+        self, user_id: UUID, token_hash: str, expires_at: datetime
+    ) -> None: ...
+    async def add_audit_event(self, event: SecurityAuditEvent) -> None: ...

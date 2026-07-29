@@ -1,0 +1,4 @@
+interface:
+  display_name: "Testar e depurar"
+  short_description: "Diagnostica falhas e garante coverage mínimo"
+  default_prompt: "Use $test-and-debug para executar os testes, diagnosticar e corrigir falhas e garantir o threshold de coverage."

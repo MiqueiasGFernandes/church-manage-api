@@ -182,10 +182,21 @@ class ChurchStatus(str, Enum):
 
 class UserStatus(str, Enum):
     PENDING_EMAIL_VERIFICATION = "pending_email_verification"
+    ACTIVE = "active"
+    BLOCKED = "blocked"
+    DEACTIVATED = "deactivated"
 
 
 class ChurchRole(str, Enum):
+    CHURCH_OWNER = "church_owner"
     CHURCH_ADMIN = "church_admin"
+
+
+class MembershipStatus(str, Enum):
+    PENDING_EMAIL_VERIFICATION = "pending_email_verification"
+    ACTIVE = "active"
+    BLOCKED = "blocked"
+    REVOKED = "revoked"
 
 
 @dataclass(slots=True)
@@ -203,7 +214,7 @@ class Church:
     created_at: datetime
 
 
-@dataclass(frozen=True, slots=True)
+@dataclass(slots=True)
 class User:
     id: UserId
     name: str
@@ -212,6 +223,21 @@ class User:
     password_hash: str
     status: UserStatus
     created_at: datetime
+    email_verified_at: datetime | None = None
+    last_login_at: datetime | None = None
+    password_changed_at: datetime | None = None
+
+    def verify_email(self, verified_at: datetime) -> None:
+        if self.status is UserStatus.PENDING_EMAIL_VERIFICATION:
+            self.status = UserStatus.ACTIVE
+            self.email_verified_at = verified_at
+
+    def record_login(self, logged_in_at: datetime) -> None:
+        self.last_login_at = logged_in_at
+
+    def change_password(self, password_hash: str, changed_at: datetime) -> None:
+        self.password_hash = password_hash
+        self.password_changed_at = changed_at
 
 
 @dataclass(frozen=True, slots=True)
@@ -223,13 +249,18 @@ class Congregation:
     created_at: datetime
 
 
-@dataclass(frozen=True, slots=True)
+@dataclass(slots=True)
 class ChurchMembership:
     id: MembershipId
     church_id: ChurchId
     user_id: UserId
     role: ChurchRole
     joined_at: datetime
+    status: MembershipStatus = MembershipStatus.PENDING_EMAIL_VERIFICATION
+
+    def activate(self) -> None:
+        if self.status is MembershipStatus.PENDING_EMAIL_VERIFICATION:
+            self.status = MembershipStatus.ACTIVE
 
 
 @dataclass(frozen=True, slots=True)

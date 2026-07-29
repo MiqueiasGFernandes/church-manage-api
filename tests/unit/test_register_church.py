@@ -19,6 +19,7 @@ from modules.organizations.infrastructure.in_memory import (
     InMemoryRegistrationRepository,
     InMemoryUnitOfWork,
 )
+from modules.organizations.infrastructure.security import HmacTokenService, InMemoryEmailSender
 
 
 class FakeHasher:
@@ -64,8 +65,8 @@ def valid_input() -> RegisterChurchInput:
             name="João da Silva",
             email="JOAO@IGREJA.COM.BR",
             phone="+5511999999999",
-            password="Senha123",
-            password_confirmation="Senha123",
+            password="SenhaSegura123",
+            password_confirmation="SenhaSegura123",
         ),
         terms_accepted=True,
     )
@@ -80,6 +81,8 @@ class RegisterChurchTest(unittest.IsolatedAsyncioTestCase):
             password_hasher=FakeHasher(),
             id_generator=SequentialIdGenerator(),
             clock=FixedClock(),
+            token_service=HmacTokenService("test-secret-key-with-at-least-32-characters"),
+            email_sender=InMemoryEmailSender(),
         )
 
     async def test_registers_complete_church_atomically(self) -> None:
@@ -91,8 +94,8 @@ class RegisterChurchTest(unittest.IsolatedAsyncioTestCase):
         self.assertEqual(len(self.repository.congregations), 1)
         self.assertEqual(self.repository.congregations[0].name, "Sede")
         self.assertEqual(len(self.repository.users), 1)
-        self.assertNotIn("Senha123", self.repository.users[0].password_hash)
-        self.assertEqual(self.repository.memberships[0].role.value, "church_admin")
+        self.assertNotIn("SenhaSegura123", self.repository.users[0].password_hash)
+        self.assertEqual(self.repository.memberships[0].role.value, "church_owner")
         self.assertEqual(self.repository.settings[0].locale, "pt-BR")
 
     async def test_rejects_existing_administrator_email_without_side_effects(self) -> None:
@@ -110,8 +113,8 @@ class RegisterChurchTest(unittest.IsolatedAsyncioTestCase):
                 name="Maria Silva",
                 email="maria@igreja.com.br",
                 phone="+5511988888888",
-                password="Senha123",
-                password_confirmation="Senha123",
+                password="SenhaSegura123",
+                password_confirmation="SenhaSegura123",
             ),
         )
         with self.assertRaises(ChurchSlugAlreadyExistsError):
@@ -139,8 +142,8 @@ class RegisterChurchTest(unittest.IsolatedAsyncioTestCase):
             name=original.administrator.name,
             email=original.administrator.email,
             phone=original.administrator.phone,
-            password="Senha123",
-            password_confirmation="Outra123",
+            password="SenhaSegura123",
+            password_confirmation="OutraSenha123",
         )
         mismatch = RegisterChurchInput(
             official_name=original.official_name,

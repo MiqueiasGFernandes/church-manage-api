@@ -16,6 +16,7 @@ from modules.organizations.infrastructure.persistence.models import (
     CongregationModel,
     UserModel,
 )
+from modules.organizations.infrastructure.security import InMemoryEmailSender
 
 pytestmark = pytest.mark.asyncio(loop_scope="session")
 
@@ -107,8 +108,8 @@ def church_payload() -> ChurchRegistrationPayload:
             "name": "João da Silva",
             "email": "JOAO@IGREJA.COM.BR",
             "phone": "+55 (11) 98888-8888",
-            "password": "Senha123",
-            "password_confirmation": "Senha123",
+            "password": "SenhaSegura123",
+            "password_confirmation": "SenhaSegura123",
         },
         "terms_accepted": True,
     }
@@ -134,6 +135,7 @@ async def registration_counts(engine: AsyncEngine) -> tuple[int, int, int, int, 
 async def test_registers_complete_church_through_http(
     api_client: AsyncClient,
     postgres_engine: AsyncEngine,
+    email_sender: InMemoryEmailSender,
 ) -> None:
     response = await api_client.post("/api/v1/churches", json=church_payload())
 
@@ -142,6 +144,47 @@ async def test_registers_complete_church_through_http(
     assert result.status == "pending_email_verification"
     assert result.email_verification_required is True
     assert "password" not in response.text.lower()
+
+    pending_login = await api_client.post(
+        "/api/v1/auth/login",
+        json={"email": "joao@igreja.com.br", "password": "SenhaSegura123"},
+    )
+    verification = await api_client.post(
+        "/api/v1/auth/verify-email", json={"token": email_sender.verifications[-1][1]}
+    )
+    login = await api_client.post(
+        "/api/v1/auth/login",
+        json={"email": "joao@igreja.com.br", "password": "SenhaSegura123"},
+    )
+    me = await api_client.get(
+        f"/api/v1/churches/{result.church_id}/me",
+        headers={"Authorization": f"Bearer {login.json()['access_token']}"},
+    )
+
+    assert pending_login.status_code == 403
+    assert verification.status_code == 204
+    assert login.status_code == 200
+    assert me.status_code == 200
+    assert me.json()["churches"][0]["role"] == "church_owner"
+
+    reset_requested = await api_client.post(
+        "/api/v1/auth/forgot-password", json={"email": "joao@igreja.com.br"}
+    )
+    password_reset = await api_client.post(
+        "/api/v1/auth/reset-password",
+        json={
+            "token": email_sender.password_resets[-1][1],
+            "new_password": "NovaSenhaSegura123",
+        },
+    )
+    new_login = await api_client.post(
+        "/api/v1/auth/login",
+        json={"email": "joao@igreja.com.br", "password": "NovaSenhaSegura123"},
+    )
+
+    assert reset_requested.status_code == 204
+    assert password_reset.status_code == 204
+    assert new_login.status_code == 200
 
     async with AsyncSession(postgres_engine) as session:
         church = await session.get(ChurchModel, result.church_id)
@@ -165,9 +208,9 @@ async def test_registers_complete_church_through_http(
         assert administrator is not None
         assert administrator.email == "joao@igreja.com.br"
         assert administrator.phone == "+5511988888888"
-        assert administrator.password_hash != "Senha123"
+        assert administrator.password_hash != "SenhaSegura123"
         assert administrator.password_hash.startswith("$argon2")
-        assert administrator.status == "pending_email_verification"
+        assert administrator.status == "active"
 
         assert congregation is not None
         assert congregation.church_id == result.church_id
@@ -177,7 +220,7 @@ async def test_registers_complete_church_through_http(
         assert address.church_id == result.church_id
 
         assert membership is not None
-        assert membership.role == "church_admin"
+        assert membership.role == "church_owner"
 
         assert settings is not None
         assert settings.locale == "pt-BR"
@@ -242,7 +285,7 @@ async def test_rejects_invalid_business_conditions_without_persisting_data(
     if rejection == "terms":
         request_payload["terms_accepted"] = False
     elif rejection == "password":
-        request_payload["administrator"]["password_confirmation"] = "Outra123"
+        request_payload["administrator"]["password_confirmation"] = "OutraSenha123"
     elif rejection == "email":
         request_payload["administrator"]["email"] = "email-invalido"
     else:

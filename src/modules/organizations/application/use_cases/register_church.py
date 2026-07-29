@@ -1,3 +1,5 @@
+from datetime import timedelta
+
 from modules.organizations.application.dto.register_church import (
     RegisterChurchInput,
     RegisterChurchOutput,
@@ -11,12 +13,14 @@ from modules.organizations.application.errors.register_church import (
     UserEmailAlreadyExistsError,
     WeakPasswordError,
 )
+from modules.organizations.application.ports.auth import IEmailSender, ITokenService
 from modules.organizations.application.ports.registration_services import (
     IClock,
     IIdGenerator,
     IPasswordHasher,
     IUnitOfWork,
 )
+from modules.organizations.application.repositories.auth_repository import SecurityAuditEvent
 from modules.organizations.application.repositories.registration_repository import (
     IRegistrationRepository,
 )
@@ -42,9 +46,10 @@ from modules.organizations.domain.model import (
     UserId,
     UserStatus,
 )
+from modules.organizations.domain.use_cases.register_church import IRegisterChurch
 
 
-class RegisterChurch:
+class RegisterChurch(IRegisterChurch):
     def __init__(
         self,
         repository: IRegistrationRepository,
@@ -52,12 +57,16 @@ class RegisterChurch:
         password_hasher: IPasswordHasher,
         id_generator: IIdGenerator,
         clock: IClock,
+        token_service: ITokenService,
+        email_sender: IEmailSender,
     ) -> None:
         self._repository = repository
         self._unit_of_work = unit_of_work
         self._password_hasher = password_hasher
         self._id_generator = id_generator
         self._clock = clock
+        self._token_service = token_service
+        self._email_sender = email_sender
 
     async def execute(self, data: RegisterChurchInput) -> RegisterChurchOutput:
         self._validate_registration(data)
@@ -108,7 +117,7 @@ class RegisterChurch:
             MembershipId(self._id_generator.generate()),
             church_id,
             user_id,
-            ChurchRole.CHURCH_ADMIN,
+            ChurchRole.CHURCH_OWNER,
             now,
         )
         settings = ChurchSettings(church_id, "pt-BR", "BRL", timezone, "DD/MM/YYYY", "BR")
@@ -127,7 +136,34 @@ class RegisterChurch:
             await self._repository.add_congregation(congregation)
             await self._repository.add_membership(membership)
             await self._repository.add_settings(settings)
+            verification_token = self._token_service.generate_opaque()
+            await self._repository.add_email_verification(
+                user_id.value,
+                self._token_service.hash_opaque(verification_token),
+                now + timedelta(hours=24),
+            )
+            await self._repository.add_audit_event(
+                SecurityAuditEvent(
+                    "USER_REGISTERED",
+                    now,
+                    actor_user_id=user_id.value,
+                    target_user_id=user_id.value,
+                    church_id=church_id.value,
+                )
+            )
+            await self._repository.add_audit_event(
+                SecurityAuditEvent(
+                    "EMAIL_VERIFICATION_REQUESTED",
+                    now,
+                    actor_user_id=user_id.value,
+                    target_user_id=user_id.value,
+                    church_id=church_id.value,
+                )
+            )
             await self._unit_of_work.commit()
+        await self._email_sender.send_email_verification(
+            administrator_email.value, verification_token
+        )
         return RegisterChurchOutput(
             church_id.value, congregation_id.value, user_id.value, church.status.value, True
         )
@@ -139,13 +175,9 @@ class RegisterChurch:
         if data.administrator.password != data.administrator.password_confirmation:
             raise PasswordMismatchError("As senhas não coincidem.")
         password = data.administrator.password
-        if (
-            len(password) < 8
-            or not any(character.isalpha() for character in password)
-            or not any(character.isdigit() for character in password)
-        ):
+        if len(password) < 10 or password.casefold() == data.administrator.email.strip().casefold():
             raise WeakPasswordError(
-                "A senha deve ter ao menos 8 caracteres, uma letra e um número."
+                "A senha deve ter ao menos 10 caracteres e não pode ser igual ao e-mail."
             )
         if not " ".join(data.administrator.name.split()):
             raise RegistrationError("O nome do administrador é obrigatório.")

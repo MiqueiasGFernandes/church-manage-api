@@ -41,8 +41,8 @@ class AdministratorRequest(BaseModel):
     name: str
     email: str
     phone: str
-    password: str = Field(min_length=8)
-    password_confirmation: str = Field(min_length=8)
+    password: str = Field(min_length=10)
+    password_confirmation: str = Field(min_length=10)
 
 
 class RegisterChurchRequest(BaseModel):

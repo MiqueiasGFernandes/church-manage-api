@@ -97,8 +97,8 @@ def payload() -> ChurchRegistrationPayload:
             "name": "João da Silva",
             "email": "joao@igreja.com.br",
             "phone": "+5511999999999",
-            "password": "Senha123",
-            "password_confirmation": "Senha123",
+            "password": "SenhaSegura123",
+            "password_confirmation": "SenhaSegura123",
         },
         "terms_accepted": True,
     }

@@ -44,6 +44,9 @@ class RegistrationMapper:
             password_hash=user.password_hash,
             status=user.status.value,
             created_at=user.created_at,
+            email_verified_at=user.email_verified_at,
+            last_login_at=user.last_login_at,
+            password_changed_at=user.password_changed_at,
         )
 
     @staticmethod
@@ -80,6 +83,7 @@ class RegistrationMapper:
             church_id=membership.church_id.value,
             user_id=membership.user_id.value,
             role=membership.role.value,
+            status=membership.status.value,
             joined_at=membership.joined_at,
         )
 

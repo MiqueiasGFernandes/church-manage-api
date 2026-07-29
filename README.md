@@ -28,6 +28,12 @@ configurações padrão.
 - Validação de CNPJ, e-mail, telefone, slug e fuso horário no domínio.
 - Detecção de e-mail, slug e CNPJ duplicados.
 - Hash de senhas com Argon2.
+- Verificação de e-mail por token opaco, armazenado somente como hash.
+- Sessões com access token JWT curto e refresh token opaco rotativo em cookie HttpOnly.
+- Autorização RBAC com permissões explícitas e isolamento por igreja.
+- Detecção de reutilização de refresh token com revogação da sessão.
+- Auditoria persistente de eventos de autenticação, sessão e autorização.
+- Rate limiting em login, verificação de e-mail e renovação da sessão.
 - Persistência opcional em PostgreSQL com transação atômica para o cadastro completo.
 - Respostas tipadas e documentação OpenAPI.
 
@@ -98,6 +104,14 @@ export DATABASE_URL=postgresql+asyncpg://church_manage:church_manage@localhost:5
 |---|---|---|
 | `PERSISTENCE_BACKEND` | `memory` | Use `postgresql` para ativar o repository SQLAlchemy. |
 | `DATABASE_URL` | vazio | URL assíncrona no formato `postgresql+asyncpg://...`. |
+| `AUTH_TOKEN_SECRET` | aleatório por processo | Segredo HMAC com no mínimo 32 caracteres; deve ser estável e aleatório em produção. |
+| `AUTH_COOKIE_SECURE` | `false` | Use `true` em produção HTTPS para proteger o refresh cookie. |
+| `EMAIL_BACKEND` | `memory` | Use `smtp` para entregar verificações fora de testes/desenvolvimento. |
+| `SMTP_HOST` / `SMTP_PORT` | vazio / `587` | Servidor SMTP usado pelo adapter de e-mail. |
+| `SMTP_SENDER` | vazio | Remetente das mensagens de verificação. |
+| `SMTP_USERNAME` / `SMTP_PASSWORD` | vazio | Credenciais SMTP, quando exigidas. |
+| `SMTP_USE_TLS` | `true` | Ativa STARTTLS no SMTP. |
+| `PUBLIC_APP_URL` | vazio | URL do frontend usada no link de confirmação. |
 
 O processo precisa receber essas variáveis de ambiente; o projeto não carrega arquivos `.env`
 automaticamente.
@@ -146,7 +160,23 @@ Com a aplicação em execução:
 - OpenAPI gerado pela aplicação: `http://localhost:8000/openapi.json`
 
 O contrato versionado está em [`docs/openapi/openapi.yaml`](docs/openapi/openapi.yaml). Ele
-contém os schemas, exemplos e respostas possíveis do endpoint de cadastro.
+contém os schemas, exemplos e respostas dos endpoints de cadastro, autenticação e autorização.
+
+Fluxos de identidade disponíveis:
+
+- `POST /api/v1/auth/verify-email` confirma o token de uso único;
+- `POST /api/v1/auth/verify-email/resend` reenvia a confirmação com resposta neutra;
+- `POST /api/v1/auth/forgot-password` solicita recuperação sem enumerar contas;
+- `POST /api/v1/auth/reset-password` redefine a senha e revoga as sessões;
+- `POST /api/v1/auth/change-password` altera a senha autenticada;
+- `POST /api/v1/auth/login` cria a sessão e define o refresh cookie;
+- `POST /api/v1/auth/refresh` rotaciona o refresh token;
+- `POST /api/v1/auth/logout` revoga a sessão atual;
+- `POST /api/v1/auth/logout-all` revoga todas as sessões do usuário;
+- `GET /api/v1/auth/sessions` lista sessões ativas;
+- `DELETE /api/v1/auth/sessions/{session_id}` revoga uma sessão própria;
+- `GET /api/v1/auth/me` retorna a identidade e os vínculos ativos;
+- `GET /api/v1/churches/{church_id}/me` exige `church:read` naquela igreja.
 
 ## Testes e qualidade
 
