@@ -1,0 +1,49 @@
+PROPRIETARY SOFTWARE LICENSE
+
+Copyright (c) 2026 Miqueias Gomes Fernandes. All Rights Reserved.
+
+This software, including its source code, object code, documentation, database
+schemas, designs, interfaces, and all associated materials (collectively, the
+"Software"), is proprietary and protected by applicable copyright,
+intellectual property, and other laws.
+
+No license or other right to the Software is granted by possession of, access
+to, disclosure of, or availability of the Software. Any rights not expressly
+granted in a separate written agreement signed by the copyright owner are
+reserved.
+
+Without the copyright owner's prior written authorization, you may not, in
+whole or in part:
+
+1. use, execute, copy, reproduce, or store the Software;
+2. modify, adapt, translate, or create derivative works from the Software;
+3. publish, distribute, transmit, disclose, sublicense, sell, rent, lease,
+   host, provide as a service, or otherwise make the Software available to any
+   third party;
+4. reverse engineer, decompile, disassemble, decode, or attempt to derive the
+   source code, underlying ideas, algorithms, structure, or organization of the
+   Software;
+5. use the Software for benchmarking, competitive analysis, development of a
+   competing product or service, or any commercial or non-commercial purpose;
+6. remove, obscure, or alter any copyright, trademark, attribution,
+   confidentiality, or proprietary notice contained in the Software.
+
+Any authorized use of the Software is limited to the scope and duration stated
+in the applicable written agreement. Upon expiration or termination of that
+authorization, all use must cease and all copies under the licensee's control
+must be permanently deleted or destroyed, except where retention is required
+by applicable law.
+
+Third-party software and dependencies included with or used by the Software
+remain subject to their respective licenses. Nothing in this license restricts
+rights that cannot lawfully be excluded or limited under applicable law.
+
+THE SOFTWARE IS PROVIDED "AS IS" TO THE MAXIMUM EXTENT PERMITTED BY APPLICABLE
+LAW, WITHOUT WARRANTIES OF ANY KIND, EXPRESS OR IMPLIED, INCLUDING WARRANTIES
+OF MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE, TITLE, AND
+NON-INFRINGEMENT. IN NO EVENT SHALL THE COPYRIGHT OWNER BE LIABLE FOR ANY
+CLAIM, DAMAGES, OR OTHER LIABILITY ARISING FROM OR RELATED TO THE SOFTWARE OR
+ITS USE, WHETHER IN CONTRACT, TORT, OR OTHERWISE.
+
+For commercial licensing or other permissions, obtain a separate written
+agreement from the copyright owner before using the Software.
