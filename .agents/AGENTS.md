@@ -1017,6 +1017,59 @@ model_config = ConfigDict(extra="forbid")
 
 em payloads de escrita, salvo quando houver razão explícita para aceitar campos extras.
 
+## 10.1 Limites de entradas textuais
+
+Todo campo textual fornecido externamente deve possuir um limite máximo
+explícito na fronteira que o recebe. Essa regra se aplica a corpos HTTP,
+parâmetros de query, headers, cookies, formulários, eventos e payloads de
+integrações.
+
+O limite deve representar o conceito do campo e variar conforme seu uso. Não
+adote um único tamanho genérico para todas as strings. Defina o valor a partir,
+nesta ordem, de:
+
+1. invariantes e formatos do domínio;
+2. limites de protocolos ou padrões reconhecidos;
+3. representação de entrada aceita antes da normalização;
+4. capacidade da persistência ou do provedor externo;
+5. proteção contra consumo desnecessário de memória, CPU, hashing e parsing.
+
+Exemplos de conceitos com limites distintos incluem nome, e-mail, telefone
+formatado, URL, slug, timezone, token opaco, senha e campos de endereço. O
+limite da entrada pode ser maior que o valor persistido quando a aplicação
+aceitar formatação que será removida durante a normalização, como em telefones
+e documentos.
+
+Em schemas Pydantic, declare `max_length` inclusive para campos opcionais e para
+campos que já possuam `min_length`, `pattern`, `format`, enum ou validação de
+domínio:
+
+```python
+class CreateChurchRequest(BaseModel):
+    website: str | None = Field(default=None, max_length=2048)
+    slug: str = Field(min_length=3, max_length=60, pattern=r"^[a-z0-9-]+$")
+    password: str = Field(min_length=10, max_length=128)
+```
+
+Ao criar ou alterar uma entrada textual:
+
+* sincronize o limite entre implementação e contrato OpenAPI usando
+  `maxLength`;
+* verifique compatibilidade com o domínio, modelo ORM, schema SQL e integração
+  externa correspondente;
+* rejeite o excesso antes de executar casos de uso, consultas, hashing ou
+  chamadas externas;
+* adicione teste que envie um caractere além do limite e valide a rejeição na
+  fronteira;
+* trate a redução de um limite existente como mudança potencialmente
+  incompatível para clientes da API.
+
+É proibido deixar uma string de entrada sem limite máximo apenas porque outra
+camada também a valida ou porque o banco de dados possui uma coluna limitada.
+Se ainda não existir um limite de negócio estabelecido, escolha um valor
+conservador coerente com o uso, registre a decisão no contrato e mantenha-o
+específico ao conceito.
+
 Não exponha modelos ORM diretamente como respostas HTTP.
 
 ---

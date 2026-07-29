@@ -436,6 +436,7 @@ components:
         token:
           type: string
           minLength: 32
+          maxLength: 128
           description: Token opaco, de uso único e com validade de 24 horas.
 
     LoginRequest:
@@ -451,6 +452,7 @@ components:
           type: string
           format: password
           minLength: 1
+          maxLength: 128
           writeOnly: true
 
     EmailRequest:
@@ -471,10 +473,12 @@ components:
         token:
           type: string
           minLength: 32
+          maxLength: 128
         new_password:
           type: string
           format: password
           minLength: 10
+          maxLength: 128
           writeOnly: true
 
     ChangePasswordRequest:
@@ -486,11 +490,13 @@ components:
           type: string
           format: password
           minLength: 1
+          maxLength: 128
           writeOnly: true
         new_password:
           type: string
           format: password
           minLength: 10
+          maxLength: 128
           writeOnly: true
 
     AccessTokenResponse:
@@ -619,6 +625,7 @@ components:
         document:
           anyOf:
             - type: string
+              maxLength: 18
             - type: 'null'
           description: CNPJ opcional. A aplicação remove caracteres não numéricos e valida os dígitos verificadores.
           examples:
@@ -632,11 +639,13 @@ components:
           example: contato@igreja.com.br
         institutional_phone:
           type: string
+          maxLength: 32
           description: Telefone com código do país; a representação persistida usa de 8 a 15 dígitos no formato E.164.
           example: '+5511999999999'
         website:
           anyOf:
             - type: string
+              maxLength: 2048
             - type: 'null'
           description: Endereço web institucional opcional.
           example: https://igreja.com.br
@@ -652,6 +661,7 @@ components:
           example: igreja-central-jundiai
         timezone:
           type: string
+          maxLength: 64
           description: Identificador de fuso horário reconhecido pelo banco IANA instalado no servidor.
           example: America/Sao_Paulo
         address:
@@ -678,42 +688,50 @@ components:
         postal_code:
           type: string
           minLength: 1
+          maxLength: 16
           description: Código postal do endereço da congregação sede.
           example: 13200-000
         street:
           type: string
           minLength: 1
+          maxLength: 200
           description: Logradouro da congregação sede.
           example: Rua das Igrejas
         number:
           type: string
           minLength: 1
+          maxLength: 30
           description: Número ou identificação do imóvel.
           example: '100'
         complement:
           anyOf:
             - type: string
+              maxLength: 100
             - type: 'null'
           description: Complemento opcional do endereço.
           example: Sala 2
         district:
           type: string
           minLength: 1
+          maxLength: 100
           description: Bairro da congregação sede.
           example: Centro
         city:
           type: string
           minLength: 1
+          maxLength: 100
           description: Cidade da congregação sede.
           example: Jundiaí
         state:
           type: string
           minLength: 1
+          maxLength: 50
           description: Estado, província ou divisão administrativa equivalente.
           example: SP
         country:
           type: string
           minLength: 1
+          maxLength: 2
           description: País do endereço.
           example: BR
 
@@ -730,6 +748,7 @@ components:
         name:
           type: string
           minLength: 1
+          maxLength: 150
           description: Nome do primeiro administrador; espaços consecutivos são normalizados.
           example: João da Silva
         email:
@@ -740,12 +759,14 @@ components:
           example: joao@igreja.com.br
         phone:
           type: string
+          maxLength: 32
           description: Telefone com código do país; a representação persistida usa de 8 a 15 dígitos no formato E.164.
           example: '+5511999999999'
         password:
           type: string
           format: password
           minLength: 10
+          maxLength: 128
           writeOnly: true
           description: Senha com ao menos 10 caracteres e diferente do e-mail.
           example: SenhaSegura123
@@ -753,6 +774,7 @@ components:
           type: string
           format: password
           minLength: 10
+          maxLength: 128
           writeOnly: true
           description: Repetição exata do campo `password`.
           example: SenhaSegura123

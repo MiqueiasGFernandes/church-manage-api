@@ -28,35 +28,35 @@ router = APIRouter(prefix="/api/v1/churches", tags=["churches"])
 
 class AddressRequest(BaseModel):
     model_config = ConfigDict(extra="forbid")
-    postal_code: str
-    street: str
-    number: str
-    complement: str | None = None
-    district: str
-    city: str
-    state: str
-    country: str
+    postal_code: str = Field(max_length=16)
+    street: str = Field(max_length=200)
+    number: str = Field(max_length=30)
+    complement: str | None = Field(default=None, max_length=100)
+    district: str = Field(max_length=100)
+    city: str = Field(max_length=100)
+    state: str = Field(max_length=50)
+    country: str = Field(max_length=2)
 
 
 class AdministratorRequest(BaseModel):
     model_config = ConfigDict(extra="forbid")
-    name: str
-    email: str
-    phone: str
-    password: str = Field(min_length=10)
-    password_confirmation: str = Field(min_length=10)
+    name: str = Field(max_length=150)
+    email: str = Field(max_length=254)
+    phone: str = Field(max_length=32)
+    password: str = Field(min_length=10, max_length=128)
+    password_confirmation: str = Field(min_length=10, max_length=128)
 
 
 class RegisterChurchRequest(BaseModel):
     model_config = ConfigDict(extra="forbid")
-    official_name: str
-    display_name: str
-    document: str | None = None
-    institutional_email: str
-    institutional_phone: str
-    website: str | None = None
-    slug: str
-    timezone: str
+    official_name: str = Field(max_length=150)
+    display_name: str = Field(max_length=100)
+    document: str | None = Field(default=None, max_length=18)
+    institutional_email: str = Field(max_length=254)
+    institutional_phone: str = Field(max_length=32)
+    website: str | None = Field(default=None, max_length=2048)
+    slug: str = Field(max_length=60)
+    timezone: str = Field(max_length=64)
     address: AddressRequest
     administrator: AdministratorRequest
     terms_accepted: bool

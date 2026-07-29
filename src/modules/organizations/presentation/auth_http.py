@@ -42,13 +42,13 @@ church_router = APIRouter(prefix="/api/v1/churches", tags=["authorization"])
 
 class VerifyEmailRequest(BaseModel):
     model_config = ConfigDict(extra="forbid")
-    token: str = Field(min_length=32)
+    token: str = Field(min_length=32, max_length=128)
 
 
 class LoginRequest(BaseModel):
     model_config = ConfigDict(extra="forbid")
     email: str = Field(max_length=254)
-    password: str = Field(min_length=1)
+    password: str = Field(min_length=1, max_length=128)
 
 
 class EmailRequest(BaseModel):
@@ -58,14 +58,14 @@ class EmailRequest(BaseModel):
 
 class ResetPasswordRequest(BaseModel):
     model_config = ConfigDict(extra="forbid")
-    token: str = Field(min_length=32)
-    new_password: str = Field(min_length=10)
+    token: str = Field(min_length=32, max_length=128)
+    new_password: str = Field(min_length=10, max_length=128)
 
 
 class ChangePasswordRequest(BaseModel):
     model_config = ConfigDict(extra="forbid")
-    current_password: str = Field(min_length=1)
-    new_password: str = Field(min_length=10)
+    current_password: str = Field(min_length=1, max_length=128)
+    new_password: str = Field(min_length=10, max_length=128)
 
 
 class TokenResponse(BaseModel):
