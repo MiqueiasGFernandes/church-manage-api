@@ -1,0 +1,4 @@
+interface:
+  display_name: "Adicionar workflow do GitHub Actions"
+  short_description: "Cria workflows seguros e verificáveis"
+  default_prompt: "Use $add-github-actions-workflow para criar ou alterar um workflow do GitHub Actions neste repositório."

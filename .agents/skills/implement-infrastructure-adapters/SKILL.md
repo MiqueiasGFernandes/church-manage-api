@@ -10,8 +10,9 @@ description: Implementa ou altera adapters da camada de infraestrutura para cont
 1. Ler integralmente o `AGENTS.md` aplicável.
 2. Localizar requisitos, especificações, ADRs, modelos de domínio e testes relacionados.
 3. Ler [references/workflow.md](references/workflow.md) integralmente antes de alterar código.
-4. Identificar a porta interna, seus consumidores, o composition root e adapters existentes.
-5. Executar os testes relevantes para estabelecer o comportamento baseline.
+4. Antes de alterar arquivos versionados, confirmar o Git Flow `feature/<descricao-curta> → develop → main` definido no `AGENTS.md`.
+5. Identificar a porta interna, seus consumidores, o composition root e adapters existentes.
+6. Executar os testes relevantes para estabelecer o comportamento baseline.
 
 Se a porta ainda não existir, defini-la na camada interna apropriada antes do adapter:
 

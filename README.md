@@ -13,6 +13,7 @@ configurações padrão.
 - [Instalação](#instalação)
 - [Configuração](#configuração)
 - [Execução](#execução)
+- [Deploy na Koyeb](#deploy-na-koyeb)
 - [Banco de dados](#banco-de-dados)
 - [API](#api)
 - [Testes e qualidade](#testes-e-qualidade)
@@ -165,6 +166,32 @@ docker build \
   --build-arg UV_VERSION=0.11.32 \
   -t church-manage-api .
 ```
+
+## Deploy na Koyeb
+
+O workflow `.github/workflows/deploy-koyeb.yml` faz o deploy somente quando um pull request de
+`develop` para `main` é efetivamente mergeado. Ele instala a Koyeb CLI e cria ou atualiza o
+serviço `reuniva-api/api` a partir do commit mergeado, usando o `Dockerfile`, região de Washington
+(`was`), instância `nano`, porta HTTP `8000` e health check `GET /health`.
+
+Crie o environment `production` no GitHub e cadastre nele o token da organização Koyeb:
+
+```text
+KOYEB_API_TOKEN
+```
+
+O token deve ser um GitHub Actions secret, nunca uma variável comum ou arquivo do repositório.
+Enquanto banco, frontend e SMTP não estiverem configurados, o workflow usa o modo provisório:
+
+```text
+APP_ENV=development
+PERSISTENCE_BACKEND=memory
+```
+
+Esse modo perde todos os dados quando uma instância reinicia e não envia e-mails. Antes de
+promover o serviço para produção, configure as variáveis da seção [Configuração](#configuração)
+na Koyeb, prepare `scripts/init-db.sql` em um PostgreSQL persistente e remova as duas variáveis
+provisórias do workflow.
 
 ## Banco de dados
 
