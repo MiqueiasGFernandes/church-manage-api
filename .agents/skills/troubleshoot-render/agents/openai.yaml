@@ -1,0 +1,4 @@
+interface:
+  display_name: "Diagnosticar Render"
+  short_description: "Correlaciona eventos, métricas e dados do Render"
+  default_prompt: "Use $troubleshoot-render para investigar uma falha no Render e apresentar a causa raiz com evidências."
