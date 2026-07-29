@@ -1,0 +1,231 @@
+@startuml
+title Church Manage API — Modelo de Domínio de Organizações
+
+hide empty methods
+skinparam linetype ortho
+skinparam shadowing false
+skinparam class {
+  BackgroundColor #F8FAFC
+  BorderColor #334155
+  FontColor #0F172A
+}
+
+package "Identificadores" <<Rectangle>> {
+  class ChurchId <<value object>> {
+    +value: UUID
+  }
+
+  class CongregationId <<value object>> {
+    +value: UUID
+  }
+
+  class UserId <<value object>> {
+    +value: UUID
+  }
+
+  class MembershipId <<value object>> {
+    +value: UUID
+  }
+}
+
+package "Dados institucionais" <<Rectangle>> {
+  class ChurchName <<value object>> {
+    +value: str
+    --
+    {invariant} 3..150 caracteres
+  }
+
+  class ChurchDisplayName <<value object>> {
+    +value: str
+    --
+    {invariant} 2..100 caracteres
+  }
+
+  class EmailAddress <<value object>> {
+    +value: str
+    --
+    {invariant} formato de e-mail
+    {invariant} máximo 254 caracteres
+  }
+
+  class PhoneNumber <<value object>> {
+    +value: str
+    --
+    {invariant} formato E.164
+    {invariant} 8..15 dígitos
+  }
+
+  class ChurchSlug <<value object>> {
+    +value: str
+    {static} +RESERVED: frozenset[str]
+    --
+    {invariant} 3..60 caracteres
+    {invariant} não reservado
+  }
+
+  class CNPJ <<value object>> {
+    +value: str
+    --
+    {invariant} 14 dígitos válidos
+  }
+
+  class TimeZone <<value object>> {
+    +value: str
+    --
+    {invariant} identificador IANA válido
+  }
+
+  class Address <<value object>> {
+    +postal_code: str
+    +street: str
+    +number: str
+    +complement: str?
+    +district: str
+    +city: str
+    +state: str
+    +country: str
+  }
+}
+
+package "Organizações" <<Rectangle>> {
+  class Church <<entity>> {
+    +id: ChurchId
+    +official_name: ChurchName
+    +display_name: ChurchDisplayName
+    +document: CNPJ?
+    +institutional_email: EmailAddress
+    +institutional_phone: PhoneNumber
+    +website: str?
+    +slug: ChurchSlug
+    +timezone: TimeZone
+    +status: ChurchStatus
+    +created_at: datetime
+  }
+
+  class Congregation <<entity>> {
+    +id: CongregationId
+    +church_id: ChurchId
+    +name: str
+    +address: Address
+    +created_at: datetime
+  }
+
+  class ChurchSettings <<entity>> {
+    +church_id: ChurchId
+    +locale: str
+    +currency: str
+    +timezone: TimeZone
+    +date_format: str
+    +country: str
+  }
+}
+
+package "Identidade e vínculos" <<Rectangle>> {
+  class User <<entity>> {
+    +id: UserId
+    +name: str
+    +email: EmailAddress
+    +phone: PhoneNumber
+    +password_hash: str
+    +status: UserStatus
+    +created_at: datetime
+    +email_verified_at: datetime?
+    +last_login_at: datetime?
+    +password_changed_at: datetime?
+    --
+    +verify_email(verified_at: datetime): None
+    +record_login(logged_in_at: datetime): None
+    +change_password(password_hash: str, changed_at: datetime): None
+  }
+
+  class ChurchMembership <<entity>> {
+    +id: MembershipId
+    +church_id: ChurchId
+    +user_id: UserId
+    +role: ChurchRole
+    +joined_at: datetime
+    +status: MembershipStatus
+    --
+    +activate(): None
+  }
+}
+
+package "Estados do domínio" <<Rectangle>> {
+  enum ChurchStatus {
+    PENDING_EMAIL_VERIFICATION
+  }
+
+  enum UserStatus {
+    PENDING_EMAIL_VERIFICATION
+    ACTIVE
+    BLOCKED
+    DEACTIVATED
+  }
+
+  enum ChurchRole {
+    CHURCH_OWNER
+    CHURCH_ADMIN
+  }
+
+  enum MembershipStatus {
+    PENDING_EMAIL_VERIFICATION
+    ACTIVE
+    BLOCKED
+    REVOKED
+  }
+}
+
+class DomainError <<exception>>
+class InvalidFieldError <<exception>> {
+  +field_name: str
+}
+
+DomainError <|-- InvalidFieldError
+
+Church *-- ChurchId
+Church *-- ChurchName
+Church *-- ChurchDisplayName
+Church *-- "0..1" CNPJ
+Church *-- EmailAddress : institutional_email
+Church *-- PhoneNumber : institutional_phone
+Church *-- ChurchSlug
+Church *-- TimeZone
+Church --> ChurchStatus
+
+Church "1" <-- "0..*" Congregation : pertence a
+Congregation *-- CongregationId
+Congregation *-- Address
+
+Church "1" <-- "0..1" ChurchSettings : configura
+ChurchSettings *-- TimeZone
+
+User *-- UserId
+User *-- EmailAddress
+User *-- PhoneNumber
+User --> UserStatus
+
+Church "1" <-- "0..*" ChurchMembership : escopo
+User "1" <-- "0..*" ChurchMembership : participação
+ChurchMembership *-- MembershipId
+ChurchMembership --> ChurchRole
+ChurchMembership --> MembershipStatus
+
+note right of ChurchMembership
+  O vínculo é único por igreja e usuário
+  na persistência. activate() somente move
+  PENDING_EMAIL_VERIFICATION para ACTIVE.
+end note
+
+note right of User
+  verify_email() ativa apenas usuários pendentes.
+  change_password() registra o instante da alteração.
+end note
+
+legend left
+  |= Estereótipo |= Responsabilidade |
+  | entity | Objeto com identidade e ciclo de vida |
+  | value object | Valor imutável validado por conteúdo |
+  | exception | Violação das regras do domínio |
+endlegend
+
+@enduml

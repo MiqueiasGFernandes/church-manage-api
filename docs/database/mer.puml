@@ -1,0 +1,195 @@
+@startuml
+title Church Manage API — Modelo Entidade-Relacionamento
+
+hide methods
+hide stereotypes
+skinparam linetype ortho
+skinparam shadowing false
+skinparam entity {
+  BackgroundColor #F8FAFC
+  BorderColor #334155
+  FontColor #0F172A
+}
+
+package "Organizações" {
+  entity "churches" as churches {
+    * id : UUID <<PK>>
+    --
+    * official_name : VARCHAR(150)
+    * display_name : VARCHAR(100)
+    document : VARCHAR(14) <<UQ>>
+    * institutional_email : VARCHAR(254)
+    * institutional_phone : VARCHAR(16)
+    website : VARCHAR(2048)
+    * slug : VARCHAR(60) <<UQ>>
+    * timezone : VARCHAR(64)
+    * status : VARCHAR(40)
+    email_verified_at : TIMESTAMPTZ
+    last_login_at : TIMESTAMPTZ
+    password_changed_at : TIMESTAMPTZ
+    * created_at : TIMESTAMPTZ
+    * updated_at : TIMESTAMPTZ
+  }
+
+  entity "addresses" as addresses {
+    * id : UUID <<PK>>
+    --
+    * church_id : UUID <<FK>>
+    * postal_code : VARCHAR(16)
+    * street : VARCHAR(200)
+    * number : VARCHAR(30)
+    complement : VARCHAR(100)
+    * district : VARCHAR(100)
+    * city : VARCHAR(100)
+    * state : VARCHAR(50)
+    * country : VARCHAR(2)
+    * created_at : TIMESTAMPTZ
+    * updated_at : TIMESTAMPTZ
+  }
+
+  entity "church_settings" as church_settings {
+    * church_id : UUID <<PK, FK>>
+    --
+    * locale : VARCHAR(10)
+    * currency : VARCHAR(3)
+    * timezone : VARCHAR(64)
+    * date_format : VARCHAR(20)
+    * country : VARCHAR(2)
+    * created_at : TIMESTAMPTZ
+    * updated_at : TIMESTAMPTZ
+  }
+
+  entity "congregations" as congregations {
+    * id : UUID <<PK>>
+    --
+    * church_id : UUID <<FK>>
+    * address_id : UUID <<FK, UQ>>
+    * name : VARCHAR(150) <<UQ church_id, name>>
+    * created_at : TIMESTAMPTZ
+    * updated_at : TIMESTAMPTZ
+  }
+}
+
+package "Identidade e acesso" {
+  entity "users" as users {
+    * id : UUID <<PK>>
+    --
+    * name : VARCHAR(150)
+    * email : VARCHAR(254) <<UQ>>
+    * phone : VARCHAR(16)
+    * password_hash : VARCHAR(255)
+    * status : VARCHAR(40)
+    email_verified_at : TIMESTAMPTZ
+    last_login_at : TIMESTAMPTZ
+    password_changed_at : TIMESTAMPTZ
+    * created_at : TIMESTAMPTZ
+    * updated_at : TIMESTAMPTZ
+  }
+
+  entity "church_memberships" as church_memberships {
+    * id : UUID <<PK>>
+    --
+    * church_id : UUID <<FK>>
+    * user_id : UUID <<FK>>
+    * role : VARCHAR(50)
+    * status : VARCHAR(40)
+    * joined_at : TIMESTAMPTZ
+    * created_at : TIMESTAMPTZ
+    * updated_at : TIMESTAMPTZ
+    --
+    UQ (church_id, user_id)
+  }
+}
+
+package "Tokens e sessões" {
+  entity "email_verification_tokens" as email_verification_tokens {
+    * id : UUID <<PK>>
+    --
+    * user_id : UUID <<FK>>
+    * token_hash : VARCHAR(64) <<UQ>>
+    * expires_at : TIMESTAMPTZ
+    used_at : TIMESTAMPTZ
+    * created_at : TIMESTAMPTZ
+  }
+
+  entity "password_reset_tokens" as password_reset_tokens {
+    * id : UUID <<PK>>
+    --
+    * user_id : UUID <<FK>>
+    * token_hash : VARCHAR(64) <<UQ>>
+    * expires_at : TIMESTAMPTZ
+    used_at : TIMESTAMPTZ
+    * created_at : TIMESTAMPTZ
+  }
+
+  entity "sessions" as sessions {
+    * id : UUID <<PK>>
+    --
+    * user_id : UUID <<FK>>
+    * refresh_token_hash : VARCHAR(64) <<UQ>>
+    * expires_at : TIMESTAMPTZ
+    revoked_at : TIMESTAMPTZ
+    * created_at : TIMESTAMPTZ
+  }
+
+  entity "consumed_refresh_tokens" as consumed_refresh_tokens {
+    * token_hash : VARCHAR(64) <<PK>>
+    --
+    * session_id : UUID <<FK>>
+    * consumed_at : TIMESTAMPTZ
+  }
+}
+
+package "Infraestrutura e auditoria" {
+  entity "rate_limits" as rate_limits {
+    * key_hash : VARCHAR(64) <<PK>>
+    --
+    * attempts : INTEGER
+    * window_started_at : TIMESTAMPTZ
+    * expires_at : TIMESTAMPTZ
+  }
+
+  entity "security_audit_events" as security_audit_events {
+    * id : UUID <<PK>>
+    --
+    * event_type : VARCHAR(80)
+    * occurred_at : TIMESTAMPTZ
+    actor_user_id : UUID <<FK>>
+    target_user_id : UUID <<FK>>
+    church_id : UUID <<FK>>
+    session_id : UUID <<FK>>
+  }
+}
+
+churches ||--o{ addresses : "possui\nCASCADE"
+churches ||--o| church_settings : "configurações\nCASCADE"
+churches ||--o{ congregations : "agrupa\nCASCADE"
+addresses ||--o| congregations : "sedia\nRESTRICT"
+
+churches ||--o{ church_memberships : "vínculos\nCASCADE"
+users ||--o{ church_memberships : "participa\nCASCADE"
+
+users ||--o{ email_verification_tokens : "verificações\nCASCADE"
+users ||--o{ password_reset_tokens : "resets\nCASCADE"
+users ||--o{ sessions : "sessões\nCASCADE"
+sessions ||--o{ consumed_refresh_tokens : "tokens consumidos\nCASCADE"
+
+users |o--o{ security_audit_events : "ator"
+users |o--o{ security_audit_events : "alvo"
+churches |o--o{ security_audit_events : "igreja"
+sessions |o--o{ security_audit_events : "sessão"
+
+legend left
+  |= Símbolo |= Significado |
+  | * | Coluna NOT NULL |
+  | PK | Chave primária |
+  | FK | Chave estrangeira |
+  | UQ | Restrição de unicidade |
+endlegend
+
+note bottom of rate_limits
+  Tabela operacional independente,
+  sem chave estrangeira.
+end note
+
+@enduml
