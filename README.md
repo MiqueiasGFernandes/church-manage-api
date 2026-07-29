@@ -102,9 +102,10 @@ export DATABASE_URL=postgresql+asyncpg://church_manage:church_manage@localhost:5
 
 | Variável | Valor padrão | Descrição |
 |---|---|---|
+| `APP_ENV` | `development` | Ambiente explícito: `development`, `test` ou `production`. Produção ativa validação fail-fast de segurança. |
 | `PERSISTENCE_BACKEND` | `memory` | Use `postgresql` para ativar o repository SQLAlchemy. |
 | `DATABASE_URL` | vazio | URL assíncrona no formato `postgresql+asyncpg://...`. |
-| `AUTH_TOKEN_SECRET` | aleatório por processo | Segredo HMAC com no mínimo 32 caracteres; deve ser estável e aleatório em produção. |
+| `AUTH_TOKEN_SECRET` | aleatório por processo | Segredo HMAC Base64 URL-safe. Em produção deve ser explícito, estável, diverso e representar ao menos 32 bytes. |
 | `AUTH_COOKIE_SECURE` | `false` | Use `true` em produção HTTPS para proteger o refresh cookie. |
 | `EMAIL_BACKEND` | `memory` | Use `smtp` para entregar verificações fora de testes/desenvolvimento. |
 | `SMTP_HOST` / `SMTP_PORT` | vazio / `587` | Servidor SMTP usado pelo adapter de e-mail. |
@@ -112,6 +113,14 @@ export DATABASE_URL=postgresql+asyncpg://church_manage:church_manage@localhost:5
 | `SMTP_USERNAME` / `SMTP_PASSWORD` | vazio | Credenciais SMTP, quando exigidas. |
 | `SMTP_USE_TLS` | `true` | Ativa STARTTLS no SMTP. |
 | `PUBLIC_APP_URL` | vazio | URL do frontend usada no link de confirmação. |
+
+Com `APP_ENV=production`, a aplicação interrompe a inicialização se PostgreSQL e
+`DATABASE_URL`, segredo HMAC seguro, cookie `Secure`, SMTP com TLS ou
+`PUBLIC_APP_URL` HTTPS não estiverem configurados. Gere um segredo compatível com:
+
+```bash
+python -c "import secrets; print(secrets.token_urlsafe(32))"
+```
 
 O processo precisa receber essas variáveis de ambiente; o projeto não carrega arquivos `.env`
 automaticamente.

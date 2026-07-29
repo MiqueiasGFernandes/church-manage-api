@@ -6,6 +6,7 @@ from contextlib import asynccontextmanager
 from fastapi import FastAPI
 
 from app.container import Container
+from app.settings import AppEnvironment, ProductionSecuritySettings, parse_environment
 from modules.organizations.application.errors.auth import AuthenticationError
 from modules.organizations.domain.use_cases.register_church import IRegisterChurch
 from modules.organizations.presentation.auth_http import (
@@ -40,21 +41,40 @@ from modules.organizations.presentation.http import (
 
 def create_app() -> FastAPI:
     container = Container()
+    environment = parse_environment(os.getenv("APP_ENV", "development"))
     persistence_backend = os.getenv("PERSISTENCE_BACKEND", "memory")
     database_url = os.getenv("DATABASE_URL", "")
-    auth_token_secret = os.getenv("AUTH_TOKEN_SECRET", secrets.token_urlsafe(32))
+    configured_auth_token_secret = os.getenv("AUTH_TOKEN_SECRET")
+    auth_token_secret = configured_auth_token_secret or secrets.token_urlsafe(32)
     auth_cookie_secure = os.getenv("AUTH_COOKIE_SECURE", "false").lower() == "true"
+    email_backend = os.getenv("EMAIL_BACKEND", "memory")
+    smtp_host = os.getenv("SMTP_HOST", "")
+    smtp_sender = os.getenv("SMTP_SENDER", "")
+    smtp_use_tls = os.getenv("SMTP_USE_TLS", "true").lower() == "true"
+    public_app_url = os.getenv("PUBLIC_APP_URL", "")
+    if environment is AppEnvironment.PRODUCTION:
+        ProductionSecuritySettings(
+            persistence_backend=persistence_backend,
+            database_url=database_url,
+            auth_token_secret=configured_auth_token_secret,
+            auth_cookie_secure=auth_cookie_secure,
+            email_backend=email_backend,
+            smtp_host=smtp_host,
+            smtp_sender=smtp_sender,
+            smtp_use_tls=smtp_use_tls,
+            public_app_url=public_app_url,
+        ).validate()
     container.config.persistence_backend.from_value(persistence_backend)
     container.config.database_url.from_value(database_url)
     container.config.auth_token_secret.from_value(auth_token_secret)
-    container.config.email_backend.from_value(os.getenv("EMAIL_BACKEND", "memory"))
-    container.config.smtp_host.from_value(os.getenv("SMTP_HOST", ""))
+    container.config.email_backend.from_value(email_backend)
+    container.config.smtp_host.from_value(smtp_host)
     container.config.smtp_port.from_value(os.getenv("SMTP_PORT", "587"))
-    container.config.smtp_sender.from_value(os.getenv("SMTP_SENDER", ""))
+    container.config.smtp_sender.from_value(smtp_sender)
     container.config.smtp_username.from_value(os.getenv("SMTP_USERNAME", ""))
     container.config.smtp_password.from_value(os.getenv("SMTP_PASSWORD", ""))
-    container.config.smtp_use_tls.from_value(os.getenv("SMTP_USE_TLS", "true"))
-    container.config.public_app_url.from_value(os.getenv("PUBLIC_APP_URL", ""))
+    container.config.smtp_use_tls.from_value(str(smtp_use_tls).lower())
+    container.config.public_app_url.from_value(public_app_url)
     container.config.rate_limit_register_church_limit.from_value(
         os.getenv("RATE_LIMIT_REGISTER_CHURCH_LIMIT", "5")
     )
