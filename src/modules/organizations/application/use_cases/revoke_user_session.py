@@ -1,3 +1,4 @@
+import logging
 from uuid import UUID
 
 from modules.organizations.application.dto.auth import (
@@ -15,6 +16,8 @@ from modules.organizations.application.repositories.auth_repository import (
     SecurityAuditEvent,
 )
 from modules.organizations.domain.use_cases.revoke_user_session import IRevokeUserSession
+
+logger = logging.getLogger(f"church_manage.{__name__}")
 
 
 class RevokeUserSession(IRevokeUserSession):
@@ -48,3 +51,11 @@ class RevokeUserSession(IRevokeUserSession):
                 await self._unit_of_work.commit()
         if missing:
             raise SessionNotFoundError("Sessão não encontrada.")
+        logger.info(
+            "user_session_revoked",
+            extra={
+                "operation": "revoke_user_session",
+                "user_id": str(actor.user_id),
+                "action": "No action required.",
+            },
+        )

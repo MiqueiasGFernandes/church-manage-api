@@ -104,6 +104,7 @@ export DATABASE_URL=postgresql+asyncpg://church_manage:church_manage@localhost:5
 | Variável | Valor padrão | Descrição |
 |---|---|---|
 | `APP_ENV` | `development` | Ambiente explícito: `development`, `test` ou `production`. Produção ativa validação fail-fast de segurança. |
+| `LOG_LEVEL` | `INFO` | Nível mínimo dos logs JSON: `DEBUG`, `INFO`, `WARNING`, `ERROR` ou `CRITICAL`. |
 | `PERSISTENCE_BACKEND` | `memory` | Use `postgresql` para ativar o repository SQLAlchemy. |
 | `DATABASE_URL` | vazio | URL assíncrona no formato `postgresql+asyncpg://...`. |
 | `AUTH_TOKEN_SECRET` | aleatório por processo | Segredo HMAC Base64 URL-safe. Em produção deve ser explícito, estável, diverso e representar ao menos 32 bytes. |
@@ -118,11 +119,19 @@ export DATABASE_URL=postgresql+asyncpg://church_manage:church_manage@localhost:5
 | `CORS_ALLOWED_METHODS` | `GET,POST,DELETE,OPTIONS` | Métodos permitidos em requisições CORS, separados por vírgula. |
 | `CORS_ALLOWED_HEADERS` | `Authorization,Content-Type` | Headers aceitos no preflight CORS, separados por vírgula. |
 | `CORS_ALLOW_CREDENTIALS` | `true` | Permite cookies para origens da allowlist. Deve permanecer `true` em produção para o refresh token. |
+| `ALLOWED_HOSTS` | hosts locais e de teste | Hosts HTTP aceitos, separados por vírgula. Em produção, configure o domínio da API; wildcard é rejeitado. |
+| `API_DOCS_ENABLED` | `true` fora de produção; `false` em produção | Habilita Swagger, ReDoc e o schema OpenAPI dinâmico. Use `true` explicitamente para publicá-los em produção. |
 
 Com `APP_ENV=production`, a aplicação interrompe a inicialização se PostgreSQL e
 `DATABASE_URL`, segredo HMAC seguro, cookie `Secure`, SMTP com TLS ou
 `PUBLIC_APP_URL` HTTPS não estiverem configurados. A allowlist CORS também deve
-conter a origem HTTPS de `PUBLIC_APP_URL`, sem wildcard. Gere um segredo compatível com:
+conter a origem HTTPS de `PUBLIC_APP_URL`, sem wildcard.
+
+`ALLOWED_HOSTS` também deve restringir a requisição ao domínio público da API. Em produção,
+a aplicação envia HSTS e, em todos os ambientes, adiciona `X-Content-Type-Options`,
+`Referrer-Policy` e `X-Frame-Options` às respostas.
+
+Gere um segredo compatível com:
 
 ```bash
 python -c "import secrets; print(secrets.token_urlsafe(32))"
@@ -225,6 +234,9 @@ Com a aplicação em execução:
 - Swagger UI: `http://localhost:8000/docs`
 - ReDoc: `http://localhost:8000/redoc`
 - OpenAPI gerado pela aplicação: `http://localhost:8000/openapi.json`
+
+Essas três rotas ficam desabilitadas por padrão quando `APP_ENV=production`; habilite-as
+deliberadamente com `API_DOCS_ENABLED=true` se a documentação dinâmica precisar ser pública.
 
 O contrato versionado está em [`docs/openapi/openapi.yaml`](docs/openapi/openapi.yaml). Ele
 contém os schemas, exemplos e respostas dos endpoints de cadastro, autenticação e autorização.

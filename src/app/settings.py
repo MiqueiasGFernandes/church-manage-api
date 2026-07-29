@@ -63,6 +63,7 @@ class ProductionSecuritySettings:
     public_app_url: str
     cors_allowed_origins: tuple[str, ...]
     cors_allow_credentials: bool
+    allowed_hosts: tuple[str, ...]
 
     def validate(self) -> None:
         if self.persistence_backend != "postgresql":
@@ -92,6 +93,8 @@ class ProductionSecuritySettings:
             raise ValueError(
                 "CORS_ALLOWED_ORIGINS deve incluir a origem HTTPS de PUBLIC_APP_URL em produção."
             )
+        if "*" in self.allowed_hosts:
+            raise ValueError("ALLOWED_HOSTS não pode usar wildcard em produção.")
 
     def _validate_token_secret(self) -> None:
         secret = self.auth_token_secret

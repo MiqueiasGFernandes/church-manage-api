@@ -1,6 +1,7 @@
 from collections.abc import Mapping
 
 import pytest
+from fastapi.testclient import TestClient
 
 from app.main import create_app
 
@@ -19,6 +20,7 @@ def valid_production_environment() -> dict[str, str]:
         "PUBLIC_APP_URL": "https://app.example.com",
         "CORS_ALLOWED_ORIGINS": "https://app.example.com",
         "CORS_ALLOW_CREDENTIALS": "true",
+        "ALLOWED_HOSTS": "api.example.com",
     }
 
 
@@ -42,6 +44,7 @@ def configure_environment(monkeypatch: pytest.MonkeyPatch, values: Mapping[str, 
         ("PUBLIC_APP_URL", "http://app.example.com"),
         ("CORS_ALLOWED_ORIGINS", "http://app.example.com"),
         ("CORS_ALLOW_CREDENTIALS", "false"),
+        ("ALLOWED_HOSTS", "*"),
     ],
 )
 def test_rejects_insecure_production_configuration(
@@ -73,3 +76,11 @@ def test_accepts_secure_production_configuration(monkeypatch: pytest.MonkeyPatch
     application = create_app()
 
     assert application.state.auth_cookie_secure is True
+    assert application.docs_url is None
+    assert application.redoc_url is None
+    assert application.openapi_url is None
+
+    with TestClient(application, base_url="https://api.example.com") as client:
+        response = client.get("/health")
+
+    assert response.headers["strict-transport-security"] == ("max-age=31536000; includeSubDomains")

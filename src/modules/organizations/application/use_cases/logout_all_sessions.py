@@ -1,3 +1,5 @@
+import logging
+
 from modules.organizations.application.dto.auth import (
     AuthenticatedUser,
 )
@@ -10,6 +12,8 @@ from modules.organizations.application.repositories.auth_repository import (
     SecurityAuditEvent,
 )
 from modules.organizations.domain.use_cases.logout_all_sessions import ILogoutAllSessions
+
+logger = logging.getLogger(f"church_manage.{__name__}")
 
 
 class LogoutAllSessions(ILogoutAllSessions):
@@ -28,3 +32,11 @@ class LogoutAllSessions(ILogoutAllSessions):
                 SecurityAuditEvent("ALL_SESSIONS_REVOKED", now, actor_user_id=actor.user_id)
             )
             await self._unit_of_work.commit()
+        logger.info(
+            "all_user_sessions_logged_out",
+            extra={
+                "operation": "logout_all_sessions",
+                "user_id": str(actor.user_id),
+                "action": "No action required.",
+            },
+        )

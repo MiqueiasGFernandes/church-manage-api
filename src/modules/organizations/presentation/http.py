@@ -132,8 +132,9 @@ async def register_church(
     )
 
 
-async def registration_error_handler(_: Request, exc: Exception) -> JSONResponse:
+async def registration_error_handler(request: Request, exc: Exception) -> JSONResponse:
     if isinstance(exc, InvalidFieldError):
+        request.state.error_code = "VALIDATION_ERROR"
         return JSONResponse(
             status_code=422,
             content={
@@ -150,10 +151,12 @@ async def registration_error_handler(_: Request, exc: Exception) -> JSONResponse
         ChurchDocumentAlreadyExistsError,
     )
     if isinstance(exc, conflict_types):
+        request.state.error_code = exc.code
         return JSONResponse(
             status_code=409, content={"error": {"code": exc.code, "message": str(exc)}}
         )
     code = exc.code if isinstance(exc, RegistrationError) else "VALIDATION_ERROR"
+    request.state.error_code = code
     return JSONResponse(status_code=422, content={"error": {"code": code, "message": str(exc)}})
 
 

@@ -1628,7 +1628,9 @@ A estratégia deve ser consistente em todo o módulo financeiro.
 
 # 21. Logging
 
-Utilize logs estruturados.
+Utilize logs estruturados em JSON, emitidos em `stdout`, para permitir correlação,
+busca e ingestão sem depender de texto livre. O nível deve ser configurável por
+`LOG_LEVEL` e mensagens devem ser técnicas, estáveis e escritas em inglês.
 
 Campos recomendados:
 
@@ -1642,6 +1644,7 @@ user_id
 resource_id
 operation
 duration_ms
+action
 ```
 
 Exemplo:
@@ -1649,17 +1652,49 @@ Exemplo:
 ```python
 logger.info(
     "registration_request_approved",
-    request_id=str(command.request_id.value),
-    church_id=str(command.church_id.value),
-    approved_by=str(command.approved_by.value),
+    extra={
+        "request_id": request_id,
+        "church_id": str(command.church_id.value),
+        "operation": "approve_registration_request",
+        "action": "No action required.",
+    },
 )
 ```
 
 Não utilizar `print` em código de produção.
 
-Mensagens de log devem ser técnicas e estáveis.
+Cada evento deve informar:
 
-Não usar informações sensíveis como parte da mensagem.
+* o que ocorreu por meio de `message` estável;
+* o contexto mínimo necessário para localizar a operação e os recursos;
+* a ação operacional recomendada em `action`, usando `No action required.`
+  apenas quando o resultado for saudável;
+* a exceção com stack trace apenas para falhas inesperadas.
+
+Evite redundância. Registre o resultado no limite que possui contexto suficiente
+para explicá-lo. Não registre o mesmo erro em todas as camadas nem emita pares
+`started`/`completed` para operações rápidas. Na borda HTTP, emita um único evento
+de conclusão por requisição e um único evento de falha quando uma exceção
+inesperada interromper o fluxo. Exclua health checks e outros probes de alta
+frequência, salvo quando falharem.
+
+Níveis obrigatórios:
+
+* `DEBUG`: diagnóstico temporário ou detalhado, desabilitado normalmente;
+* `INFO`: conclusão saudável e mudança relevante de ciclo de vida;
+* `WARNING`: resultado esperado que exige atenção, como rejeição ou rate limit;
+* `ERROR`/`EXCEPTION`: falha inesperada que impediu a operação.
+
+Não use `ERROR` para erros de validação ou negócio já tratados. Não monte
+mensagens com identificadores; mantenha-os em campos estruturados. Propague
+`request_id` nas respostas e utilize-o nos eventos internos relacionados.
+
+Além dos dados sensíveis listados na seção 18, não registre payloads, cabeçalhos,
+query strings, e-mails, telefones, endereços IP ou identificadores de sessão.
+Identificadores técnicos de recursos podem ser registrados somente quando forem
+necessários para investigação e não funcionarem como credenciais.
+
+Ao adicionar ou revisar logs, utilize a skill `.agents/skills/add-logging`.
 
 ---
 

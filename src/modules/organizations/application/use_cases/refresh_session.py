@@ -1,4 +1,6 @@
+import logging
 from datetime import timedelta
+from uuid import UUID
 
 from modules.organizations.application.dto.auth import (
     TokenPair,
@@ -21,6 +23,8 @@ from modules.organizations.application.repositories.auth_repository import (
 from modules.organizations.domain.model import UserStatus
 from modules.organizations.domain.use_cases.refresh_session import IRefreshSession
 
+logger = logging.getLogger(f"church_manage.{__name__}")
+
 
 class RefreshSession(IRefreshSession):
     def __init__(
@@ -42,6 +46,7 @@ class RefreshSession(IRefreshSession):
         token_hash = self._tokens.hash_opaque(refresh_token)
         reused = False
         result: TokenPair | None = None
+        authenticated_user_id: UUID | None = None
         async with self._unit_of_work:
             session = await self._repository.find_session_by_refresh(token_hash)
             if session is None:
@@ -80,8 +85,25 @@ class RefreshSession(IRefreshSession):
                 )
                 access, expires_in = self._tokens.issue_access(user.id.value, session.id, now)
                 result = TokenPair(access, refresh, expires_in)
+                authenticated_user_id = user.id.value
                 await self._unit_of_work.commit()
         if reused:
+            logger.warning(
+                "refresh_token_reuse_detected",
+                extra={
+                    "operation": "refresh_session",
+                    "action": "Review the security audit and investigate possible token theft.",
+                },
+            )
             raise SessionRevokedError("Reutilização de refresh token detectada; sessão revogada.")
         assert result is not None
+        assert authenticated_user_id is not None
+        logger.info(
+            "session_refreshed",
+            extra={
+                "operation": "refresh_session",
+                "user_id": str(authenticated_user_id),
+                "action": "No action required.",
+            },
+        )
         return result

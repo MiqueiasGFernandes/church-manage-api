@@ -1,3 +1,4 @@
+import logging
 from datetime import timedelta
 
 from modules.organizations.application.dto.register_church import (
@@ -47,6 +48,8 @@ from modules.organizations.domain.model import (
     UserStatus,
 )
 from modules.organizations.domain.use_cases.register_church import IRegisterChurch
+
+logger = logging.getLogger(f"church_manage.{__name__}")
 
 
 class RegisterChurch(IRegisterChurch):
@@ -163,6 +166,15 @@ class RegisterChurch(IRegisterChurch):
             await self._unit_of_work.commit()
         await self._email_sender.send_email_verification(
             administrator_email.value, verification_token
+        )
+        logger.info(
+            "church_registration_completed",
+            extra={
+                "operation": "register_church",
+                "church_id": str(church_id.value),
+                "user_id": str(user_id.value),
+                "action": "No action required.",
+            },
         )
         return RegisterChurchOutput(
             church_id.value, congregation_id.value, user_id.value, church.status.value, True
