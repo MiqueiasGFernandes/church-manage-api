@@ -12,14 +12,6 @@ class AppEnvironment(StrEnum):
     PRODUCTION = "production"
 
 
-def normalize_postgresql_url(database_url: str) -> str:
-    """Select the asyncpg dialect for provider-issued PostgreSQL URLs."""
-    for scheme in ("postgresql://", "postgres://"):
-        if database_url.startswith(scheme):
-            return database_url.replace(scheme, "postgresql+asyncpg://", 1)
-    return database_url
-
-
 @dataclass(frozen=True, slots=True)
 class CorsSettings:
     allowed_origins: tuple[str, ...]
@@ -76,8 +68,9 @@ class ProductionSecuritySettings:
     def validate(self) -> None:
         if self.persistence_backend != "postgresql":
             raise ValueError("PERSISTENCE_BACKEND deve ser postgresql em produção.")
-        if not self.database_url.startswith("postgresql+asyncpg://"):
-            raise ValueError("DATABASE_URL deve usar o formato postgresql+asyncpg:// em produção.")
+        supported_database_schemes = ("postgresql://", "postgresql+asyncpg://")
+        if not self.database_url.startswith(supported_database_schemes):
+            raise ValueError("DATABASE_URL deve ser uma URL PostgreSQL válida em produção.")
         self._validate_token_secret()
         if not self.auth_cookie_secure:
             raise ValueError("AUTH_COOKIE_SECURE deve ser true em produção.")

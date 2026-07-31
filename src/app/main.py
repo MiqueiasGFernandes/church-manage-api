@@ -17,7 +17,6 @@ from app.settings import (
     AppEnvironment,
     CorsSettings,
     ProductionSecuritySettings,
-    normalize_postgresql_url,
     parse_boolean,
     parse_environment,
 )
@@ -59,7 +58,7 @@ def create_app() -> FastAPI:
     configure_logging(os.getenv("LOG_LEVEL", "INFO"))
     logger = get_logger(__name__)
     persistence_backend = os.getenv("PERSISTENCE_BACKEND", "memory")
-    database_url = normalize_postgresql_url(os.getenv("DATABASE_URL", ""))
+    database_url = os.getenv("DATABASE_URL", "")
     configured_auth_token_secret = os.getenv("AUTH_TOKEN_SECRET")
     auth_token_secret = configured_auth_token_secret or secrets.token_urlsafe(32)
     auth_cookie_secure = os.getenv("AUTH_COOKIE_SECURE", "false").lower() == "true"
