@@ -84,3 +84,15 @@ def test_accepts_secure_production_configuration(monkeypatch: pytest.MonkeyPatch
         response = client.get("/health")
 
     assert response.headers["strict-transport-security"] == ("max-age=31536000; includeSubDomains")
+
+
+def test_accepts_provider_postgresql_url_in_production(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    environment = valid_production_environment()
+    environment["DATABASE_URL"] = "postgresql://church:secret@database/church"
+    configure_environment(monkeypatch, environment)
+
+    application = create_app()
+
+    assert application.state.auth_cookie_secure is True
