@@ -12,6 +12,14 @@ class AppEnvironment(StrEnum):
     PRODUCTION = "production"
 
 
+def normalize_postgresql_url(database_url: str) -> str:
+    """Select the asyncpg dialect for provider-issued PostgreSQL URLs."""
+    for scheme in ("postgresql://", "postgres://"):
+        if database_url.startswith(scheme):
+            return database_url.replace(scheme, "postgresql+asyncpg://", 1)
+    return database_url
+
+
 @dataclass(frozen=True, slots=True)
 class CorsSettings:
     allowed_origins: tuple[str, ...]
