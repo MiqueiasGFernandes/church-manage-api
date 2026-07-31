@@ -36,7 +36,10 @@ from modules.organizations.domain.model import (
     UserId,
     UserStatus,
 )
-from modules.organizations.infrastructure.persistence.database import PostgresDatabase
+from modules.organizations.infrastructure.persistence.database import (
+    PostgresDatabase,
+    psycopg_url,
+)
 from modules.organizations.infrastructure.persistence.mappers import RegistrationMapper
 from modules.organizations.infrastructure.persistence.models import (
     AddressModel,
@@ -252,6 +255,15 @@ async def test_unit_of_work_translates_registration_conflicts(
 def test_postgres_database_requires_connection_url() -> None:
     with pytest.raises(ValueError, match="DATABASE_URL"):
         PostgresDatabase("")
+
+
+def test_postgres_database_uses_psycopg_with_native_neon_url() -> None:
+    database_url = psycopg_url(
+        "postgresql://user:password@ep-example-pooler.us-east-1.aws.neon.tech/db?sslmode=require"
+    )
+
+    assert database_url.drivername == "postgresql+psycopg"
+    assert database_url.host == "ep-example-pooler.us-east-1.aws.neon.tech"
 
 
 @pytest.mark.asyncio
