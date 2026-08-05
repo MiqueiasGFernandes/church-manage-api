@@ -86,6 +86,7 @@ def registration_payload() -> dict[str, object]:
             "password_confirmation": "SenhaSegura123",
         },
         "terms_accepted": True,
+        "captcha_token": "test-token",
     }
 
 
@@ -184,13 +185,23 @@ async def test_registration_verification_login_authorization_refresh_and_logout(
         registered = await client.post("/api/v1/churches", json=registration_payload())
         church_id = registered.json()["data"]["church_id"]
         blocked = await client.post(
-            "/api/v1/auth/login", json={"email": "joao@igreja.com.br", "password": "SenhaSegura123"}
+            "/api/v1/auth/login",
+            json={
+                "email": "joao@igreja.com.br",
+                "password": "SenhaSegura123",
+                "captcha_token": "test-token",
+            },
         )
         verified = await client.post(
             "/api/v1/auth/verify-email", json={"token": sender.verifications[0][1]}
         )
         login = await client.post(
-            "/api/v1/auth/login", json={"email": "joao@igreja.com.br", "password": "SenhaSegura123"}
+            "/api/v1/auth/login",
+            json={
+                "email": "joao@igreja.com.br",
+                "password": "SenhaSegura123",
+                "captcha_token": "test-token",
+            },
         )
         headers = {"Authorization": f"Bearer {login.json()['access_token']}"}
         me = await client.get("/api/v1/auth/me", headers=headers)

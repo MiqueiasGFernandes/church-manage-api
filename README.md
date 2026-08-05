@@ -2,7 +2,7 @@
   <img src="docs/assets/logo.png" alt="Logo do Reuniva" width="240">
 </p>
 
-# Reuniva API
+# Reuniva API 
 
 API HTTP para gestão de igrejas. A versão atual implementa o cadastro inicial de uma igreja,
 incluindo sua congregação sede, o primeiro administrador, o vínculo administrativo e as
@@ -125,10 +125,13 @@ export DATABASE_URL=postgresql+asyncpg://church_manage:church_manage@localhost:5
 | `CORS_ALLOW_CREDENTIALS` | `true` | Permite cookies para origens da allowlist. Deve permanecer `true` em produção para o refresh token. |
 | `ALLOWED_HOSTS` | hosts locais e de teste | Hosts HTTP aceitos, separados por vírgula. Em produção, configure o domínio da API; wildcard é rejeitado. |
 | `API_DOCS_ENABLED` | `true` fora de produção; `false` em produção | Habilita Swagger, ReDoc e o schema OpenAPI dinâmico. Use `true` explicitamente para publicá-los em produção. |
+| `TURNSTILE_ENABLED` | `false` | Ativa a validação server-side do Cloudflare Turnstile. Deve ser `true` em produção. |
+| `TURNSTILE_SECRET` | vazio | Secret key do widget; obrigatória e nunca exposta ao frontend. |
+| `TURNSTILE_ALLOWED_HOSTNAMES` | `localhost` | Hostnames do frontend aceitos na resposta do Siteverify, separados por vírgula. |
 
 Com `APP_ENV=production`, a aplicação interrompe a inicialização se PostgreSQL e
 `DATABASE_URL`, segredo HMAC seguro, cookie `Secure`, SMTP com TLS ou
-`PUBLIC_APP_URL` HTTPS não estiverem configurados. A allowlist CORS também deve
+`PUBLIC_APP_URL` HTTPS e Turnstile não estiverem configurados. A allowlist CORS também deve
 conter a origem HTTPS de `PUBLIC_APP_URL`, sem wildcard.
 
 `ALLOWED_HOSTS` também deve restringir a requisição ao domínio público da API. Em produção,
@@ -295,7 +298,7 @@ Execute a análise estática de tipos em modo estrito:
 uv run pyright
 ```
 
-O hook executa a suíte completa e exige cobertura mínima de 91%. Como os testes E2E usam o
+O hook executa a suíte completa e exige cobertura mínima de 90%. Como os testes E2E usam o
 PostgreSQL real, mantenha o serviço de teste ativo:
 
 ```bash

@@ -1,0 +1,121 @@
+name: Validate feature branch and open pull request
+
+on:
+  create:
+  pull_request:
+    branches:
+      - develop
+    types:
+      - opened
+      - synchronize
+      - reopened
+
+concurrency:
+  group: feature-branch-${{ github.event.pull_request.head.ref || github.ref_name }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+jobs:
+  build:
+    name: Build application image
+    if: >-
+      ${{
+        (github.event_name == 'create' && github.ref_type == 'branch' && startsWith(github.ref_name, 'feature/')) ||
+        (github.event_name == 'pull_request' && startsWith(github.head_ref, 'feature/'))
+      }}
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+
+    steps:
+      - name: Check out feature branch
+        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+        with:
+          ref: ${{ github.sha }}
+          persist-credentials: false
+
+      - name: Build application image
+        run: |
+          docker build \
+            --build-arg PYTHON_VERSION=3.12 \
+            --build-arg UV_VERSION=0.11.32 \
+            --tag reuniva-api:${{ github.sha }} \
+            .
+
+  test:
+    name: Run unit tests and enforce coverage
+    if: >-
+      ${{
+        (github.event_name == 'create' && github.ref_type == 'branch' && startsWith(github.ref_name, 'feature/')) ||
+        (github.event_name == 'pull_request' && startsWith(github.head_ref, 'feature/'))
+      }}
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+
+    steps:
+      - name: Check out feature branch
+        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+        with:
+          ref: ${{ github.sha }}
+          persist-credentials: false
+
+      - name: Set up Python
+        uses: actions/setup-python@a26af69be951a213d495a4c3e4e4022e16d87065 # v5
+        with:
+          python-version: "3.12"
+
+      - name: Set up uv
+        uses: astral-sh/setup-uv@d0cc045d04ccac9d8b7881df0226f9e82c39688e # v6
+        with:
+          enable-cache: true
+
+      - name: Install locked dependencies
+        run: uv sync --frozen --all-groups
+
+      - name: Run unit tests with coverage
+        run: uv run pytest tests/unit --cov --cov-report=term-missing
+
+  open-pull-request:
+    name: Open pull request to develop
+    if: >-
+      ${{
+        github.event_name == 'create' &&
+        github.ref_type == 'branch' &&
+        startsWith(github.ref_name, 'feature/')
+      }}
+    needs:
+      - build
+      - test
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    permissions:
+      contents: read
+      pull-requests: write
+
+    steps:
+      - name: Open pull request if none exists
+        env:
+          GH_TOKEN: ${{ github.token }}
+          GH_REPO: ${{ github.repository }}
+          HEAD_BRANCH: ${{ github.ref_name }}
+        run: |
+          existing_pr_count="$(
+            gh pr list \
+              --base develop \
+              --head "$HEAD_BRANCH" \
+              --state open \
+              --json number \
+              --jq 'length'
+          )"
+
+          if [[ "$existing_pr_count" != "0" ]]; then
+            echo "An open pull request from $HEAD_BRANCH to develop already exists."
+            exit 0
+          fi
+
+          gh pr create \
+            --base develop \
+            --head "$HEAD_BRANCH" \
+            --title "feat: merge $HEAD_BRANCH into develop" \
+            --body "Automated pull request created after the application build, test suite, and coverage threshold passed."

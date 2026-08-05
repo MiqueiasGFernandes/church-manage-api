@@ -49,6 +49,7 @@ def registration_payload() -> dict[str, object]:
             "password_confirmation": "SenhaSegura123",
         },
         "terms_accepted": True,
+        "captcha_token": "test-token",
     }
 
 
@@ -67,7 +68,11 @@ async def register_verify_and_login(
 
     login = await api_client.post(
         "/api/v1/auth/login",
-        json={"email": "admin-auth-e2e@igreja.com.br", "password": "SenhaSegura123"},
+        json={
+            "email": "admin-auth-e2e@igreja.com.br",
+            "password": "SenhaSegura123",
+            "captcha_token": "test-token",
+        },
     )
     assert login.status_code == 200
     refresh_token = api_client.cookies.get("refresh_token")
@@ -90,6 +95,7 @@ async def test_concurrent_login_attempts_share_atomic_postgres_rate_limit(
                 json={
                     "email": "rate-limit-e2e@example.com",
                     "password": "SenhaInvalida123",
+                    "captcha_token": "test-token",
                 },
             )
             for index in range(6)
@@ -182,7 +188,11 @@ async def test_user_lists_and_revokes_only_an_owned_session(
     first = await register_verify_and_login(api_client, email_sender)
     second_login = await api_client.post(
         "/api/v1/auth/login",
-        json={"email": "admin-auth-e2e@igreja.com.br", "password": "SenhaSegura123"},
+        json={
+            "email": "admin-auth-e2e@igreja.com.br",
+            "password": "SenhaSegura123",
+            "captcha_token": "test-token",
+        },
     )
     assert second_login.status_code == 200
     second_access_token = str(second_login.json()["access_token"])

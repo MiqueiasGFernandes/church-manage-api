@@ -43,6 +43,7 @@ class ChurchRegistrationPayload(TypedDict):
     address: AddressPayload
     administrator: AdministratorPayload
     terms_accepted: bool
+    captcha_token: str
 
 
 class InvalidChurchRegistrationPayload(ChurchRegistrationPayload):
@@ -101,6 +102,7 @@ def payload() -> ChurchRegistrationPayload:
             "password_confirmation": "SenhaSegura123",
         },
         "terms_accepted": True,
+        "captcha_token": "test-token",
     }
 
 

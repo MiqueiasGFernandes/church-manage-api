@@ -8,6 +8,7 @@ from sqlalchemy import text
 from sqlalchemy.ext.asyncio import AsyncEngine, create_async_engine
 
 from app.main import create_app
+from modules.organizations.infrastructure.persistence.database import psycopg_url
 from modules.organizations.infrastructure.security import InMemoryEmailSender
 
 TEST_DATABASE_URL = (
@@ -42,7 +43,7 @@ async def postgres_engine() -> AsyncIterator[AsyncEngine]:
     if "church_manage_test" not in database_url:
         pytest.fail("DATABASE_URL deve apontar explicitamente para church_manage_test.")
 
-    engine = create_async_engine(database_url)
+    engine = create_async_engine(psycopg_url(database_url))
 
     async def truncate_registration_tables() -> None:
         async with engine.begin() as connection:

@@ -28,6 +28,7 @@ from modules.organizations.presentation.auth_http import (
     get_authenticate,
     get_change_password,
     get_current_user,
+    get_human_challenge_verifier,
     get_list_sessions,
     get_logout_all_sessions,
     get_logout_session,
@@ -67,6 +68,13 @@ def create_app() -> FastAPI:
     smtp_sender = os.getenv("SMTP_SENDER", "")
     smtp_use_tls = os.getenv("SMTP_USE_TLS", "true").lower() == "true"
     public_app_url = os.getenv("PUBLIC_APP_URL", "")
+    turnstile_enabled = parse_boolean(os.getenv("TURNSTILE_ENABLED", "false"), "TURNSTILE_ENABLED")
+    turnstile_secret = os.getenv("TURNSTILE_SECRET", "")
+    turnstile_allowed_hostnames = tuple(
+        hostname.strip()
+        for hostname in os.getenv("TURNSTILE_ALLOWED_HOSTNAMES", "localhost").split(",")
+        if hostname.strip()
+    )
     cors_settings = CorsSettings.from_strings(
         origins=os.getenv("CORS_ALLOWED_ORIGINS", "http://localhost:3000"),
         methods=os.getenv("CORS_ALLOWED_METHODS", "GET,POST,DELETE,OPTIONS"),
@@ -103,6 +111,9 @@ def create_app() -> FastAPI:
             cors_allowed_origins=cors_settings.allowed_origins,
             cors_allow_credentials=cors_settings.allow_credentials,
             allowed_hosts=allowed_hosts,
+            turnstile_enabled=turnstile_enabled,
+            turnstile_secret=turnstile_secret,
+            turnstile_allowed_hostnames=turnstile_allowed_hostnames,
         ).validate()
     container.config.persistence_backend.from_value(persistence_backend)
     container.config.database_url.from_value(database_url)
@@ -115,6 +126,9 @@ def create_app() -> FastAPI:
     container.config.smtp_password.from_value(os.getenv("SMTP_PASSWORD", ""))
     container.config.smtp_use_tls.from_value(str(smtp_use_tls).lower())
     container.config.public_app_url.from_value(public_app_url)
+    container.config.turnstile_enabled.from_value(str(turnstile_enabled).lower())
+    container.config.turnstile_secret.from_value(turnstile_secret)
+    container.config.turnstile_allowed_hostnames.from_value(turnstile_allowed_hostnames)
     container.config.rate_limit_register_church_limit.from_value(
         os.getenv("RATE_LIMIT_REGISTER_CHURCH_LIMIT", "5")
     )
@@ -176,6 +190,7 @@ def create_app() -> FastAPI:
         try:
             yield
         finally:
+            await container.http_client().aclose()
             if persistence_backend == "postgresql":
                 await container.database().dispose()
             logger.info(
@@ -222,6 +237,9 @@ def create_app() -> FastAPI:
 
     async def resolve_rate_limiter():
         return container.rate_limiter()
+
+    async def resolve_human_challenge_verifier():
+        return container.human_challenge_verifier()
 
     async def resolve_resend_email_verification():
         return container.resend_email_verification()
@@ -346,6 +364,9 @@ def create_app() -> FastAPI:
     application.dependency_overrides[get_revoke_session] = resolve_revoke_session
     application.dependency_overrides[get_require_permission] = resolve_permission
     application.dependency_overrides[get_rate_limiter] = resolve_rate_limiter
+    application.dependency_overrides[get_human_challenge_verifier] = (
+        resolve_human_challenge_verifier
+    )
     application.dependency_overrides[get_resend_email_verification] = (
         resolve_resend_email_verification
     )

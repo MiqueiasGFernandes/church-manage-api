@@ -48,3 +48,11 @@ class InvalidPasswordResetTokenError(AuthenticationError):
 
 class InvalidPasswordError(AuthenticationError):
     code = "AUTH_PASSWORD_INVALID"
+
+
+class HumanChallengeFailedError(AuthenticationError):
+    code = "HUMAN_CHALLENGE_FAILED"
+
+
+class HumanChallengeUnavailableError(AuthenticationError):
+    code = "HUMAN_CHALLENGE_UNAVAILABLE"

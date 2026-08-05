@@ -1,3 +1,4 @@
+import httpx
 from dependency_injector import containers, providers
 
 from modules.organizations.application.ports.auth import (
@@ -45,6 +46,10 @@ from modules.organizations.infrastructure.security import (
     HmacTokenService,
     InMemoryEmailSender,
     SmtpEmailSender,
+)
+from modules.organizations.infrastructure.turnstile import (
+    AllowAllHumanChallengeVerifier,
+    TurnstileHumanChallengeVerifier,
 )
 
 
@@ -166,6 +171,7 @@ class Container(containers.DeclarativeContainer):
     config.database_url.from_value("")
     config.auth_token_secret.from_value("development-only-token-secret-32-bytes")
     config.email_backend.from_value("memory")
+    config.turnstile_enabled.from_value("false")
     config.rate_limit_register_church_limit.from_value(5)
     config.rate_limit_register_church_window_seconds.from_value(3600)
     config.rate_limit_verify_email_limit.from_value(10)
@@ -224,6 +230,19 @@ class Container(containers.DeclarativeContainer):
     )
     email_sender = providers.Selector(
         config.email_backend, memory=in_memory_email_sender, smtp=smtp_email_sender
+    )
+    http_client = providers.Singleton(httpx.AsyncClient, timeout=5.0)
+    allow_all_human_challenge = providers.Singleton(AllowAllHumanChallengeVerifier)
+    turnstile_human_challenge = providers.Singleton(
+        TurnstileHumanChallengeVerifier,
+        secret=config.turnstile_secret,
+        allowed_hostnames=config.turnstile_allowed_hostnames,
+        client=http_client,
+    )
+    human_challenge_verifier = providers.Selector(
+        config.turnstile_enabled,
+        false=allow_all_human_challenge,
+        true=turnstile_human_challenge,
     )
     in_memory_register_church = providers.Factory(
         RegisterChurch,

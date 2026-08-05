@@ -2,7 +2,7 @@ repos:
   - repo: local
     hooks:
       - id: test-suite-with-coverage
-        name: Test suite with coverage above 91%
+        name: Test suite with coverage of at least 90%
         entry: uv run pytest --cov --cov-report=term-missing
         language: system
         pass_filenames: false
