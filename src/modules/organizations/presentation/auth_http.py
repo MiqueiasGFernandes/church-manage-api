@@ -11,6 +11,8 @@ from modules.organizations.application.errors.auth import (
     AuthenticationError,
     ChurchAccessDeniedError,
     EmailNotVerifiedError,
+    HumanChallengeFailedError,
+    HumanChallengeUnavailableError,
     InvalidAccessTokenError,
     InvalidCredentialsError,
     InvalidPasswordError,
@@ -19,6 +21,10 @@ from modules.organizations.application.errors.auth import (
     SessionNotFoundError,
 )
 from modules.organizations.application.ports.auth import IRateLimiter, RateLimitAction
+from modules.organizations.application.ports.human_challenge import (
+    HumanChallengeAction,
+    IHumanChallengeVerifier,
+)
 from modules.organizations.domain.use_cases.authenticate_user import IAuthenticateUser
 from modules.organizations.domain.use_cases.change_password import IChangePassword
 from modules.organizations.domain.use_cases.get_current_user import IGetCurrentUser
@@ -49,11 +55,18 @@ class LoginRequest(BaseModel):
     model_config = ConfigDict(extra="forbid")
     email: str = Field(max_length=254)
     password: str = Field(min_length=1, max_length=128)
+    captcha_token: str = Field(min_length=1, max_length=2048)
 
 
 class EmailRequest(BaseModel):
     model_config = ConfigDict(extra="forbid")
     email: str = Field(max_length=254)
+
+
+class ForgotPasswordRequest(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+    email: str = Field(max_length=254)
+    captcha_token: str = Field(min_length=1, max_length=2048)
 
 
 class ResetPasswordRequest(BaseModel):
@@ -154,6 +167,10 @@ async def get_rate_limiter() -> IRateLimiter:
     raise RuntimeError("Dependência não configurada.")
 
 
+async def get_human_challenge_verifier() -> IHumanChallengeVerifier:
+    raise RuntimeError("Dependência não configurada.")
+
+
 def client_address(request: Request) -> str:
     return request.client.host if request.client is not None else "unknown"
 
@@ -210,15 +227,17 @@ async def resend_email_verification(
 
 @router.post("/forgot-password", status_code=status.HTTP_204_NO_CONTENT)
 async def forgot_password(
-    body: EmailRequest,
+    body: ForgotPasswordRequest,
     request: Request,
     use_case: IRequestPasswordReset = Depends(get_request_password_reset),
     rate_limiter: IRateLimiter = Depends(get_rate_limiter),
+    human_challenge: IHumanChallengeVerifier = Depends(get_human_challenge_verifier),
 ) -> Response:
     await rate_limiter.ensure_allowed(
         RateLimitAction.FORGOT_PASSWORD,
         f"forgot-password:{client_address(request)}:{body.email.strip().casefold()}",
     )
+    await human_challenge.ensure_valid(body.captcha_token, HumanChallengeAction.PASSWORD_RECOVERY)
     await use_case.execute(body.email)
     return Response(status_code=status.HTTP_204_NO_CONTENT)
 
@@ -244,11 +263,13 @@ async def login(
     response: Response,
     use_case: IAuthenticateUser = Depends(get_authenticate),
     rate_limiter: IRateLimiter = Depends(get_rate_limiter),
+    human_challenge: IHumanChallengeVerifier = Depends(get_human_challenge_verifier),
 ) -> TokenResponse:
     await rate_limiter.ensure_allowed(
         RateLimitAction.LOGIN,
         f"login:{client_address(request)}:{body.email.strip().casefold()}",
     )
+    await human_challenge.ensure_valid(body.captcha_token, HumanChallengeAction.LOGIN)
     result = await use_case.execute(body.email, body.password)
     set_refresh_cookie(response, result.refresh_token, bool(request.app.state.auth_cookie_secure))
     return TokenResponse(
@@ -396,6 +417,10 @@ async def auth_error_handler(request: Request, exc: Exception) -> JSONResponse:
         status_code = 422
     elif isinstance(exc, RateLimitExceededError):
         status_code = 429
+    elif isinstance(exc, HumanChallengeUnavailableError):
+        status_code = 503
+    elif isinstance(exc, HumanChallengeFailedError):
+        status_code = 422
     elif isinstance(exc, (EmailNotVerifiedError, PermissionDeniedError, ChurchAccessDeniedError)):
         status_code = 403
     else:

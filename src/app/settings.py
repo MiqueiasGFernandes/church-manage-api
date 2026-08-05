@@ -64,6 +64,9 @@ class ProductionSecuritySettings:
     cors_allowed_origins: tuple[str, ...]
     cors_allow_credentials: bool
     allowed_hosts: tuple[str, ...]
+    turnstile_enabled: bool
+    turnstile_secret: str
+    turnstile_allowed_hostnames: tuple[str, ...]
 
     def validate(self) -> None:
         if self.persistence_backend != "postgresql":
@@ -96,6 +99,12 @@ class ProductionSecuritySettings:
             )
         if "*" in self.allowed_hosts:
             raise ValueError("ALLOWED_HOSTS não pode usar wildcard em produção.")
+        if not self.turnstile_enabled:
+            raise ValueError("TURNSTILE_ENABLED deve ser true em produção.")
+        if not self.turnstile_secret.strip():
+            raise ValueError("TURNSTILE_SECRET é obrigatório em produção.")
+        if not self.turnstile_allowed_hostnames:
+            raise ValueError("TURNSTILE_ALLOWED_HOSTNAMES é obrigatório em produção.")
 
     def _validate_token_secret(self) -> None:
         secret = self.auth_token_secret

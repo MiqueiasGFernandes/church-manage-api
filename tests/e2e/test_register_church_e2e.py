@@ -52,6 +52,7 @@ class ChurchRegistrationPayload(TypedDict):
     address: AddressPayload
     administrator: AdministratorPayload
     terms_accepted: bool
+    captcha_token: str
 
 
 class RegistrationData(BaseModel):
@@ -112,6 +113,7 @@ def church_payload() -> ChurchRegistrationPayload:
             "password_confirmation": "SenhaSegura123",
         },
         "terms_accepted": True,
+        "captcha_token": "test-token",
     }
 
 
@@ -147,14 +149,22 @@ async def test_registers_complete_church_through_http(
 
     pending_login = await api_client.post(
         "/api/v1/auth/login",
-        json={"email": "joao@igreja.com.br", "password": "SenhaSegura123"},
+        json={
+            "email": "joao@igreja.com.br",
+            "password": "SenhaSegura123",
+            "captcha_token": "test-token",
+        },
     )
     verification = await api_client.post(
         "/api/v1/auth/verify-email", json={"token": email_sender.verifications[-1][1]}
     )
     login = await api_client.post(
         "/api/v1/auth/login",
-        json={"email": "joao@igreja.com.br", "password": "SenhaSegura123"},
+        json={
+            "email": "joao@igreja.com.br",
+            "password": "SenhaSegura123",
+            "captcha_token": "test-token",
+        },
     )
     me = await api_client.get(
         f"/api/v1/churches/{result.church_id}/me",
@@ -168,11 +178,13 @@ async def test_registers_complete_church_through_http(
     assert me.json()["churches"][0]["role"] == "church_owner"
 
     reset_requested = await api_client.post(
-        "/api/v1/auth/forgot-password", json={"email": "joao@igreja.com.br"}
+        "/api/v1/auth/forgot-password",
+        json={"email": "joao@igreja.com.br", "captcha_token": "test-token"},
     )
     previous_reset_token = email_sender.password_resets[-1][1]
     latest_reset_requested = await api_client.post(
-        "/api/v1/auth/forgot-password", json={"email": "joao@igreja.com.br"}
+        "/api/v1/auth/forgot-password",
+        json={"email": "joao@igreja.com.br", "captcha_token": "test-token"},
     )
     previous_token_reset = await api_client.post(
         "/api/v1/auth/reset-password",
@@ -190,7 +202,11 @@ async def test_registers_complete_church_through_http(
     )
     new_login = await api_client.post(
         "/api/v1/auth/login",
-        json={"email": "joao@igreja.com.br", "password": "NovaSenhaSegura123"},
+        json={
+            "email": "joao@igreja.com.br",
+            "password": "NovaSenhaSegura123",
+            "captcha_token": "test-token",
+        },
     )
 
     assert reset_requested.status_code == 204

@@ -67,11 +67,15 @@ paths:
         content:
           application/json:
             schema:
-              $ref: '#/components/schemas/EmailRequest'
+              $ref: '#/components/schemas/ForgotPasswordRequest'
       responses:
         '204':
           description: Solicitação processada.
+        '422':
+          $ref: '#/components/responses/AuthenticationError'
         '429':
+          $ref: '#/components/responses/AuthenticationError'
+        '503':
           $ref: '#/components/responses/AuthenticationError'
 
   /api/v1/auth/reset-password:
@@ -126,7 +130,11 @@ paths:
           $ref: '#/components/responses/AuthenticationError'
         '403':
           $ref: '#/components/responses/AuthenticationError'
+        '422':
+          $ref: '#/components/responses/AuthenticationError'
         '429':
+          $ref: '#/components/responses/AuthenticationError'
+        '503':
           $ref: '#/components/responses/AuthenticationError'
 
   /api/v1/auth/refresh:
@@ -335,6 +343,7 @@ paths:
                     password: SenhaSegura123
                     password_confirmation: SenhaSegura123
                   terms_accepted: true
+                  captcha_token: turnstile-token
       responses:
         '201':
           description: Igreja e estrutura inicial cadastradas com sucesso.
@@ -384,6 +393,7 @@ paths:
                 oneOf:
                   - $ref: '#/components/schemas/RequestValidationErrorResponse'
                   - $ref: '#/components/schemas/RegistrationErrorResponse'
+                  - $ref: '#/components/schemas/AuthenticationErrorResponse'
               examples:
                 unknownField:
                   summary: Campo não permitido no corpo
@@ -410,6 +420,8 @@ paths:
                       fields:
                         slug:
                           - O slug informado possui formato inválido.
+        '503':
+          $ref: '#/components/responses/AuthenticationError'
         '429':
           $ref: '#/components/responses/AuthenticationError'
 
@@ -447,7 +459,7 @@ components:
     LoginRequest:
       type: object
       additionalProperties: false
-      required: [email, password]
+      required: [email, password, captcha_token]
       properties:
         email:
           type: string
@@ -459,6 +471,12 @@ components:
           minLength: 1
           maxLength: 128
           writeOnly: true
+        captcha_token:
+          type: string
+          minLength: 1
+          maxLength: 2048
+          writeOnly: true
+          description: Token de uso único emitido pelo Cloudflare Turnstile para a action `login`.
 
     EmailRequest:
       type: object
@@ -469,6 +487,22 @@ components:
           type: string
           format: email
           maxLength: 254
+
+    ForgotPasswordRequest:
+      type: object
+      additionalProperties: false
+      required: [email, captcha_token]
+      properties:
+        email:
+          type: string
+          format: email
+          maxLength: 254
+        captcha_token:
+          type: string
+          minLength: 1
+          maxLength: 2048
+          writeOnly: true
+          description: Token de uso único emitido pelo Cloudflare Turnstile para a action `password_recovery`.
 
     ResetPasswordRequest:
       type: object
@@ -597,6 +631,8 @@ components:
                 - AUTH_RATE_LIMIT_EXCEEDED
                 - AUTH_PASSWORD_RESET_TOKEN_INVALID
                 - AUTH_PASSWORD_INVALID
+                - HUMAN_CHALLENGE_FAILED
+                - HUMAN_CHALLENGE_UNAVAILABLE
             message:
               type: string
               minLength: 1
@@ -614,6 +650,7 @@ components:
         - address
         - administrator
         - terms_accepted
+        - captcha_token
       properties:
         official_name:
           type: string
@@ -677,6 +714,12 @@ components:
           type: boolean
           const: true
           description: Confirmação obrigatória do aceite dos termos.
+        captcha_token:
+          type: string
+          minLength: 1
+          maxLength: 2048
+          writeOnly: true
+          description: Token de uso único emitido pelo Cloudflare Turnstile para a action `registration`.
 
     AddressRequest:
       type: object

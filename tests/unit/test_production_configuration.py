@@ -21,6 +21,9 @@ def valid_production_environment() -> dict[str, str]:
         "CORS_ALLOWED_ORIGINS": "https://app.example.com",
         "CORS_ALLOW_CREDENTIALS": "true",
         "ALLOWED_HOSTS": "api.example.com",
+        "TURNSTILE_ENABLED": "true",
+        "TURNSTILE_SECRET": "turnstile-secret",
+        "TURNSTILE_ALLOWED_HOSTNAMES": "app.example.com",
     }
 
 
@@ -45,6 +48,9 @@ def configure_environment(monkeypatch: pytest.MonkeyPatch, values: Mapping[str, 
         ("CORS_ALLOWED_ORIGINS", "http://app.example.com"),
         ("CORS_ALLOW_CREDENTIALS", "false"),
         ("ALLOWED_HOSTS", "*"),
+        ("TURNSTILE_ENABLED", "false"),
+        ("TURNSTILE_SECRET", ""),
+        ("TURNSTILE_ALLOWED_HOSTNAMES", ""),
     ],
 )
 def test_rejects_insecure_production_configuration(

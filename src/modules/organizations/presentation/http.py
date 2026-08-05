@@ -19,9 +19,17 @@ from modules.organizations.application.errors.register_church import (
     WeakPasswordError,
 )
 from modules.organizations.application.ports.auth import IRateLimiter, RateLimitAction
+from modules.organizations.application.ports.human_challenge import (
+    HumanChallengeAction,
+    IHumanChallengeVerifier,
+)
 from modules.organizations.domain.model import DomainError, InvalidFieldError
 from modules.organizations.domain.use_cases.register_church import IRegisterChurch
-from modules.organizations.presentation.auth_http import client_address, get_rate_limiter
+from modules.organizations.presentation.auth_http import (
+    client_address,
+    get_human_challenge_verifier,
+    get_rate_limiter,
+)
 
 router = APIRouter(prefix="/api/v1/churches", tags=["churches"])
 
@@ -60,6 +68,7 @@ class RegisterChurchRequest(BaseModel):
     address: AddressRequest
     administrator: AdministratorRequest
     terms_accepted: bool
+    captcha_token: str = Field(min_length=1, max_length=2048)
 
 
 class RegisterChurchData(BaseModel):
@@ -84,11 +93,13 @@ async def register_church(
     request: Request,
     use_case: IRegisterChurch = Depends(get_register_church),
     rate_limiter: IRateLimiter = Depends(get_rate_limiter),
+    human_challenge: IHumanChallengeVerifier = Depends(get_human_challenge_verifier),
 ) -> RegisterChurchResponse:
     await rate_limiter.ensure_allowed(
         RateLimitAction.REGISTER_CHURCH,
         f"register-church:{client_address(request)}:{body.administrator.email.strip().casefold()}",
     )
+    await human_challenge.ensure_valid(body.captcha_token, HumanChallengeAction.REGISTRATION)
     address = RegisterAddressInput(
         postal_code=body.address.postal_code,
         street=body.address.street,
