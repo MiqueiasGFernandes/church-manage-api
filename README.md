@@ -298,7 +298,7 @@ Execute a análise estática de tipos em modo estrito:
 uv run pyright
 ```
 
-O hook executa a suíte completa e exige cobertura mínima de 91%. Como os testes E2E usam o
+O hook executa a suíte completa e exige cobertura mínima de 90%. Como os testes E2E usam o
 PostgreSQL real, mantenha o serviço de teste ativo:
 
 ```bash

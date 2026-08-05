@@ -1,0 +1,51 @@
+name: Open pull request from develop to main
+
+on:
+  pull_request:
+    branches:
+      - develop
+    types:
+      - closed
+
+concurrency:
+  group: promote-develop-to-main
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+jobs:
+  open-pull-request:
+    name: Open pull request to main
+    if: ${{ github.event.pull_request.merged == true }}
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    permissions:
+      contents: read
+      pull-requests: write
+
+    steps:
+      - name: Open pull request if none exists
+        env:
+          GH_TOKEN: ${{ github.token }}
+          GH_REPO: ${{ github.repository }}
+        run: |
+          existing_pr_count="$(
+            gh pr list \
+              --base main \
+              --head develop \
+              --state open \
+              --json number \
+              --jq 'length'
+          )"
+
+          if [[ "$existing_pr_count" != "0" ]]; then
+            echo "An open pull request from develop to main already exists."
+            exit 0
+          fi
+
+          gh pr create \
+            --base main \
+            --head develop \
+            --title "chore: promote develop to main" \
+            --body "Automated pull request created after a pull request was merged into develop."

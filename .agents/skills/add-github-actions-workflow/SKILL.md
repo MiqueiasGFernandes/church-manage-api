@@ -8,12 +8,14 @@ description: Cria, altera e valida workflows do GitHub Actions em `.github/workf
 ## Fluxo
 
 1. Ler integralmente `AGENTS.md` e instruções equivalentes aplicáveis ao repositório.
-2. Inspecionar `.github/workflows`, scripts, manifests, lockfiles, documentação e comandos locais.
-3. Definir o evento exato, os filtros de branch/path, as condições de execução e o resultado esperado.
-4. Confirmar comandos no repositório; não inventar scripts, versões, secrets, ambientes ou recursos externos.
-5. Fazer a menor alteração que entregue o fluxo solicitado e preserve workflows existentes.
-6. Validar sintaxe, expressões, segurança, comandos e comportamento observável.
-7. Relatar arquivos alterados, gatilhos, requisitos externos, validações e riscos residuais.
+2. Ler [references/project-context.md](references/project-context.md) e confirmar seus dados nos
+   arquivos indicados antes de reutilizá-los.
+3. Inspecionar `.github/workflows`, scripts, manifests, lockfiles, documentação e comandos locais.
+4. Definir o evento exato, os filtros de branch/path, as condições de execução e o resultado esperado.
+5. Confirmar comandos no repositório; não inventar scripts, versões, secrets, ambientes ou recursos externos.
+6. Fazer a menor alteração que entregue o fluxo solicitado e preserve workflows existentes.
+7. Validar sintaxe, expressões, segurança, comandos e comportamento observável.
+8. Relatar arquivos alterados, gatilhos, requisitos externos, validações e riscos residuais.
 
 ## Projetar o gatilho
 
