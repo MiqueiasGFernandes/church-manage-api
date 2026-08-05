@@ -2,7 +2,7 @@
   <img src="docs/assets/logo.png" alt="Logo do Reuniva" width="240">
 </p>
 
-# Reuniva API
+# Reuniva API 
 
 API HTTP para gestão de igrejas. A versão atual implementa o cadastro inicial de uma igreja,
 incluindo sua congregação sede, o primeiro administrador, o vínculo administrativo e as

@@ -2,12 +2,16 @@ name: Validate feature branch and open pull request
 
 on:
   create:
-  push:
+  pull_request:
     branches:
-      - "feature/**"
+      - develop
+    types:
+      - opened
+      - synchronize
+      - reopened
 
 concurrency:
-  group: feature-branch-${{ github.ref_name }}
+  group: feature-branch-${{ github.event.pull_request.head.ref || github.ref_name }}
   cancel-in-progress: true
 
 permissions:
@@ -16,7 +20,11 @@ permissions:
 jobs:
   build:
     name: Build application image
-    if: ${{ github.ref_type == 'branch' && startsWith(github.ref_name, 'feature/') }}
+    if: >-
+      ${{
+        (github.event_name == 'create' && github.ref_type == 'branch' && startsWith(github.ref_name, 'feature/')) ||
+        (github.event_name == 'pull_request' && startsWith(github.head_ref, 'feature/'))
+      }}
     runs-on: ubuntu-24.04
     timeout-minutes: 15
 
@@ -37,7 +45,11 @@ jobs:
 
   test:
     name: Run unit tests and enforce coverage
-    if: ${{ github.ref_type == 'branch' && startsWith(github.ref_name, 'feature/') }}
+    if: >-
+      ${{
+        (github.event_name == 'create' && github.ref_type == 'branch' && startsWith(github.ref_name, 'feature/')) ||
+        (github.event_name == 'pull_request' && startsWith(github.head_ref, 'feature/'))
+      }}
     runs-on: ubuntu-24.04
     timeout-minutes: 15
 
@@ -66,7 +78,12 @@ jobs:
 
   open-pull-request:
     name: Open pull request to develop
-    if: ${{ github.ref_type == 'branch' && startsWith(github.ref_name, 'feature/') }}
+    if: >-
+      ${{
+        github.event_name == 'create' &&
+        github.ref_type == 'branch' &&
+        startsWith(github.ref_name, 'feature/')
+      }}
     needs:
       - build
       - test
